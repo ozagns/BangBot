@@ -194,7 +194,7 @@ const QRCode = require('qrcode');                                   // QR GENERA
 const lastPdfPerChat = new Map();   // key: JID chat, value: message object PDF
 // Simpan PDF terakhir per chat (grup/privat)
 const LAST_PDF = {};
-const REMBG_CLI = '"C:/Users/lenov/AppData/Roaming/Python/Python311/Scripts/rembg.exe"';
+const REMBG_CLI = "rembg";
 // Simpan gambar terakhir per chat (untuk !qrauto)
 const LAST_QR_IMAGE = {};
 
@@ -8920,7 +8920,8 @@ Selesai Bang.`
                     });
 
                     // Lokasi Real-ESRGAN-mu
-                    const esrganExe = `"C:\\Tools\\realesrgan\\realesrgan-ncnn-vulkan.exe"`;
+                    // Sementara matikan dulu path windows-nya biar ga error crash
+                    const esrganExe = "realesrgan-ncnn-vulkan";
 
                     // Model terbaik 2x yg kamu punya
                     const modelName = "realesr-animevideov3-x2";
