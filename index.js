@@ -2577,95 +2577,48 @@ async function startBot() {
         }
     });
 
-// =================================================================
-// GROUP PARTICIPANT UPDATE + WELCOME MEMBER BARU
-// =================================================================
-sock.ev.on("group-participants.update", async (update) => {
-    try {
-        console.log(">> group-participants.update:", JSON.stringify(update, null, 2));
-
-        const groupJid    = update.id;
-        const participants = update.participants || [];
-        const action       = update.action;
-
-        if (!groupJid || !participants.length) return;
-
-        // Ambil metadata grup
-        let groupName = "-";
+    // =========================================================
+    // 🔥 FITUR WELCOME & GOODBYE (Sensor Pintu)
+    // =========================================================
+    sock.ev.on('group-participants.update', async (anu) => {
+        console.log(anu); // Cek di logs kalau ada yg join
         try {
-            const meta = await sock.groupMetadata(groupJid);
-            groupName = meta.subject || "-";
-        } catch (e) {
-            console.error("Gagal ambil metadata grup:", e);
-        }
-
-        // =============================
-        // WELCOME MEMBER BARU
-        // =============================
-        if (action === "add") {
-            for (const p of participants) {
-                const username = (p || "").split("@")[0] || "member";
-
-                const outPath = `./welcome_${Date.now()}.png`;
-
+            const metadata = await sock.groupMetadata(anu.id);
+            const participants = anu.participants;
+            
+            for (let num of participants) {
+                // FOTO PROFIL (Coba ambil, kalau gak ada pake gambar default)
+                let ppuser;
                 try {
-                    // Coba buat kartu welcome
-                    await createWelcomeCard(username, groupName, outPath);
-                    const img = fs.readFileSync(outPath);
+                    ppuser = await sock.profilePictureUrl(num, 'image');
+                } catch {
+                    ppuser = 'https://telegra.ph/file/24fa902ead26340f3df2c.png'; // Gambar default (Polosan)
+                }
 
-                    await sock.sendMessage(groupJid, {
-                        image: img,
-                        caption:
-`Wah, @${username} baru masuk nih! 🎉
-BangBot standby kalau dibutuhin, Bang.
-
-Ketik *!menu* buat lihat fitur lengkap BangBot.`,
-                        mentions: [p]
+                // Cek Aksi: ADD (Masuk) atau REMOVE (Keluar)
+                if (anu.action == 'add') {
+                    const weltext = `Halo @${num.split("@")[0]} 👋\nSelamat datang di Grup *${metadata.subject}*!\n\n!menu untuk cek fitur bot.`;
+                    
+                    await sock.sendMessage(anu.id, { 
+                        image: { url: ppuser }, 
+                        caption: weltext, 
+                        mentions: [num] 
                     });
-
-                } catch (err) {
-                    console.error("Error welcome card, fallback ke teks biasa:", err);
-
-                    // Kalau Jimp / file error → fallback teks biasa
-                    await sock.sendMessage(groupJid, {
-                        text:
-`Wah, @${username} baru masuk nih! 🎉
-Selamat datang di *${groupName}*.
-
-BangBot standby kalau dibutuhin, Bang.
-Ketik *!menu* buat lihat fitur lengkap.`,
-                        mentions: [p]
+                } 
+                else if (anu.action == 'remove') {
+                    const byetext = `Selamat tinggal @${num.split("@")[0]} 👋\nSemoga tenang di alam sana.`;
+                    
+                    await sock.sendMessage(anu.id, { 
+                        image: { url: ppuser }, 
+                        caption: byetext, 
+                        mentions: [num] 
                     });
-                } finally {
-                    if (fs.existsSync(outPath)) {
-                        fs.unlinkSync(outPath);
-                    }
                 }
             }
+        } catch (err) {
+            console.log("Error Welcome:", err);
         }
-
-        // =============================
-        // ADMIN GUARDIAN (tetap sama)
-        // =============================
-        if (
-            (action === "remove" || action === "demote") &&
-            PROTECTED_ADMINS.includes(participants[0])
-        ) {
-            await sock.sendMessage(groupJid, {
-                text: "Terjadi percobaan hapus/demote admin yang dilindungi. Silakan cek pengaturan grup secara manual."
-            });
-
-            if (action === "remove") {
-                await sock.groupParticipantsUpdate(groupJid, participants, "add");
-            } else {
-                await sock.groupParticipantsUpdate(groupJid, participants, "promote");
-            }
-        }
-
-    } catch (err) {
-        console.error("group-participants.update handler error:", err);
-    }
-});
+    });
 
     // =================================================================
     // MESSAGE HANDLER
