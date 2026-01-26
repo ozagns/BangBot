@@ -1,25 +1,25 @@
-FROM node:18-buster
+FROM node:18-bullseye
 
-# Install alat-alat dapur (ImageMagick & FFmpeg)
+# 1. Install Pisau Dapur (ImageMagick & FFmpeg)
 RUN apt-get update && \
-  apt-get install -y \
-  ffmpeg \
-  imagemagick \
-  webp && \
-  apt-get upgrade -y && \
-  rm -rf /var/lib/apt/lists/*
+    apt-get install -y \
+    ffmpeg \
+    imagemagick \
+    webp && \
+    rm -rf /var/lib/apt/lists/*
 
-# Siapkan folder kerja
+# 2. Trik Sulap: Ubah nama 'convert' jadi 'magick' biar bot gak bingung
+RUN ln -s /usr/bin/convert /usr/bin/magick
+
+# 3. Siapkan Folder
 WORKDIR /usr/src/app
 
-# Copy file package.json biar bisa install npm
+# 4. Copy & Install
 COPY package*.json ./
-
-# Install paket npm
 RUN npm install
 
-# Copy semua file bot kamu ke dalam server
+# 5. Masukkan sisa file
 COPY . .
 
-# Jalankan bot
+# 6. Jalankan
 CMD ["node", "index.js"]
