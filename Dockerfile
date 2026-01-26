@@ -1,4 +1,4 @@
-FROM node:18-bullseye
+FROM node:20-bullseye
 
 # 1. Install Pisau Dapur (ImageMagick & FFmpeg)
 RUN apt-get update && \
