@@ -1,0 +1,14 @@
+{
+  "prefix": "!",
+  "maintenance": false,
+  "autoEmojiReaction": true,
+  "autoEmojiChance": 0.35,
+  "autoCommandReaction": true,
+  "cooldownMs": 4000,
+  "floodWindowMs": 8000,
+  "floodMaxMsg": 7,
+  "downloadLimitPerUser": 10,
+  "downloadLimitPerGroup": 50,
+  "ownerJid": "",
+  "disabledChats": []
+}
