@@ -2700,8 +2700,23 @@ Ketik *!menu* buat lihat fitur lengkap.`,
             msg.message?.extendedTextMessage?.text ||
             msg.message?.imageMessage?.caption ||
             msg.message?.videoMessage?.caption ||
-            msg.message?.documentMessage?.caption ||   // <--- tambahkan ini
+            msg.message?.documentMessage?.caption ||
             "";
+
+        // =====================================================
+        // 🔥 FITUR MULTI-PREFIX (HACK) 🔥
+        // =====================================================
+        // Daftar simbol yang mau dibaca sebagai command
+        const availablePrefixes = ['.', '#', '/', 'cp', '!', '?'];
+        
+        // Cek apakah pesan diawali salah satu simbol itu
+        const usedPrefix = availablePrefixes.find(p => teks.startsWith(p));
+        
+        if (usedPrefix) {
+            // Kita tipu bot-nya: Ganti simbol depan jadi "!" biar script di bawah jalan
+            teks = "!" + teks.slice(usedPrefix.length);
+        }
+        // =====================================================
 
         const lower = teks.toLowerCase().trim();
         const args = lower.split(" ");
