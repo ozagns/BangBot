@@ -3471,7 +3471,7 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                     return;
                 }
 
-                await sock.sendMessage(from, { react: { text: "⏳", key: msg.key } });
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 // DAFTAR SERVER (Urutan Prioritas: Siputzx -> Caliph -> Ryzendesu)
                 // Siputzx biasanya emojinya lebih rapi (kecil)
@@ -3524,8 +3524,7 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                     return;
                 }
 
-                await sock.sendMessage(from, { react: { text: "⏳", key: msg.key } });
-                await sock.sendMessage(from, { text: "⏳ Otw bikin animasi (Slow Mode)..." }, { quoted: msg });
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
                     const id = Date.now();
@@ -3582,7 +3581,7 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                     await new Promise((resolve, reject) => {
                         // UPDATE SETTINGAN KECEPATAN:
                         // -delay 80 = 0.8 detik per frame (Lambat & Jelas)
-                        exec(`magick ${fileListStr} -loop 0 -delay 80 "${output}"`, (err) => {
+                        exec(`magick ${fileListStr} -loop 0 -delay 60 "${output}"`, (err) => {
                             if (err) reject(err);
                             else resolve();
                         });
