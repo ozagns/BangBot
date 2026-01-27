@@ -3516,74 +3516,74 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                 });
             }
 
-            // =================================================
-            // BRATVID — TEKS → STIKER BRAT ANIMASI (PROGRESSIVE)
+// =================================================
+            // BRATVID — TEKS → STIKER BRAT ANIMASI (REVISI FIX)
             // =================================================
             if (cmd === "!bratvid") {
                 const raw = teks.replace(/!bratvid/i, "").trim();
 
                 if (!raw) {
-                    await sock.sendMessage(from, {
-                        text: "Format: !bratvid teks yang mau dijadikan stiker animasi"
-                    });
+                    await sock.sendMessage(from, { text: "Format: !bratvid teks panjang" }, { quoted: msg });
                     return;
                 }
 
+                await sock.sendMessage(from, { text: "⏳ Bikin animasi brat..." }, { quoted: msg });
+
                 const baseWords = raw.trim().split(/\s+/);
                 const totalWords = baseWords.length;
-
-                const maxFrames = 5;
+                const maxFrames = 8; // Tambah dikit biar lebih halus
                 const frameCount = Math.min(maxFrames, totalWords);
 
+                // Pakai Random ID biar file gak tabrakan sama orang lain
+                const id = Date.now(); 
                 const framePngs = [];
                 const txtFiles = [];
 
                 try {
                     for (let i = 1; i <= frameCount; i++) {
+                        // Logika progressif kata
                         let targetCount = Math.ceil((totalWords * i) / frameCount);
-                        if (targetCount < i) targetCount = i;
                         if (targetCount > totalWords) targetCount = totalWords;
 
                         const segmentWords = baseWords.slice(0, targetCount);
                         const segmentText = segmentWords.join(" ");
-
+                        
+                        // Format teks ala brat (acak spasi/enter)
                         const formatted = bratifyText(segmentText);
 
-                        const txtFile = `./bratvid_text_${i}.txt`;
-                        const pngFile = `./bratvid_frame_${i}.png`;
+                        const txtFile = `./bratvid_${id}_${i}.txt`;
+                        const pngFile = `./bratvid_${id}_${i}.png`;
 
                         fs.writeFileSync(txtFile, formatted, "utf8");
 
+                        // --- PERBAIKAN UTAMA DI SINI ---
+                        // 1. Hapus '-pointsize 120' (Biar font auto-size)
+                        // 2. Pakai '-size 400x400' (Bikin kotak teks aman)
+                        // 3. Hapus tanda '^' di resize (Biar gak di-zoom paksa)
                         const cmdFrame =
                             `magick -background white -fill black ` +
                             `-font "${IPHONE_FONT_PATH}" ` +
-                            `-size 400x400 ` + // 1. Bikin kotak teks biar gak nabrak pinggir
-                            `-gravity center ` + // 2. Posisi teks di tengah
-                            `caption:@${txtFile} ` + // 3. Auto-size font menyesuaikan kotak
-                            `-bordercolor white -border 56x56 ` + // 4. Tambah border putih
-                            `-resize 512x512 ` + // 5. Resize pas (HAPUS tanda ^)
-                            `-gravity center -extent 512x512 ` + // 6. Pastikan output tetap kotak
-                            `-blur 0x3 "${pngFile}"`;
+                            `-size 400x400 ` +          // Kotak teks (ada margin)
+                            `-gravity center ` +        // Posisi tengah
+                            `caption:@${txtFile} ` +    // Auto-fit teks ke kotak
+                            `-bordercolor white -border 56x56 ` + // Border putih sekeliling
+                            `-resize 512x512 ` +        // Ukuran akhir stiker
+                            `-blur 0x3 "${pngFile}"`;   // Blur dikit biar estetik
 
                         await execAsync(cmdFrame);
 
-                        framePngs.push(pngFile);
+                        // Ulangi frame terakhir biar bacanya enak (tahan lama dikit)
+                        const repeatCount = (i === frameCount) ? 10 : 3; 
+                        for (let r = 0; r < repeatCount; r++) {
+                            framePngs.push(pngFile);
+                        }
                         txtFiles.push(txtFile);
                     }
 
-                    const output = "./bratvid.webp";
+                    const output = `./bratvid_${id}.webp`;
 
-                    const repeatsPerFrame = 5;
-                    const animFrames = [];
-
-                    for (const f of framePngs) {
-                        for (let i = 0; i < repeatsPerFrame; i++) {
-                            animFrames.push(f);
-                        }
-                    }
-
-                    const cmdAnim =
-                        `magick ${animFrames.join(" ")} -loop 0 -delay 50 "${output}"`;
+                    // Gabung jadi animasi (delay 20ms biar ngebut dikit ala brat)
+                    const cmdAnim = `magick ${framePngs.join(" ")} -loop 0 -delay 20 "${output}"`;
 
                     await execAsync(cmdAnim);
 
@@ -3594,15 +3594,15 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                         author: "BangBot"
                     });
 
-                    for (const f of framePngs) fs.unlinkSync(f);
-                    for (const t of txtFiles) fs.unlinkSync(t);
-                    fs.unlinkSync(output);
+                    // Bersih-bersih file sampah
+                    // Kita pakai Set biar file png yg diduplicate cuma dihapus sekali
+                    [...new Set(framePngs)].forEach(f => { if(fs.existsSync(f)) fs.unlinkSync(f) });
+                    txtFiles.forEach(t => { if(fs.existsSync(t)) fs.unlinkSync(t) });
+                    if(fs.existsSync(output)) fs.unlinkSync(output);
 
                 } catch (err) {
-                    console.error("bratvid anim error:", err);
-                    await sock.sendMessage(from, {
-                        text: "Gagal membuat stiker brat animasi, Bang."
-                    });
+                    console.error("bratvid error:", err);
+                    await sock.sendMessage(from, { text: "Gagal membuat stiker animasi." }, { quoted: msg });
                 }
             }
 
