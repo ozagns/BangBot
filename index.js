@@ -2594,8 +2594,7 @@ async function startBot() {
                 if (action === 'add') {
                     await sock.sendMessage(id, { 
                         image: { url: ppuser }, 
-                        caption: `Halo @${username} 👋\nSelamat datang!
-!menu untuk lihat fitur bot.`, 
+                        caption: `Halo @${username} 👋\nSelamat datang!\n!menu untuk lihat fitur bot.`, 
                         mentions: [num] 
                     });
                 } 
