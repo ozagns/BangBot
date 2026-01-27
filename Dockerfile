@@ -1,4 +1,4 @@
-FROM node:18-bullseye
+FROM node:20-bullseye
 
 # 1. Install Aplikasi Pendukung (FFmpeg, ImageMagick, LibreOffice, dll)
 RUN apt-get update && \
@@ -16,19 +16,19 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # 2. Install Downloader Tools
-RUN pip3 install yt-dlp gallery-dl speedtest-cli
+RUN pip3 install yt-dlp gallery-dl speedtest-cli --break-system-packages
 
 # 3. Setup Folder Kerja
 WORKDIR /usr/src/app
 
 # 4. Copy Package & Install Modules
 COPY package.json .
-# --- HAPUS package-lock JIKA ADA BIAR GAK KONFLIK ---
+# Hapus lock file biar gak ngunci versi
 RUN rm -f package-lock.json 
 RUN npm install
 
 # 5. 🔥 JURUS PAKSA: DOWNGRADE JIMP MANUAL 🔥
-# Ini akan menimpa instalasi Jimp apapun jadi versi 0.16.13
+# Pastikan Jimp yang terpasang adalah versi 0.16.13 (Versi Stabil Lama)
 RUN npm uninstall jimp && npm install jimp@0.16.13
 
 # 6. Copy Script Bot
