@@ -3461,7 +3461,7 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
             }
 
 // =================================================
-            // BRAT (API ALTERNATIF) — RYZENDESU 🛡️
+            // BRAT (MULTI-SERVER) — CARI YANG RAPI 🎨
             // =================================================
             if (cmd === "!brat") {
                 const text = teks.replace(/!brat/i, "").trim();
@@ -3471,36 +3471,44 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                     return;
                 }
 
-                try {
-                    await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+                await sock.sendMessage(from, { react: { text: "⏳", key: msg.key } });
 
-                    // GANTI API KE RYZENDESU (Lebih Stabil)
-                    const url = `https://api.ryzendesu.vip/api/maker/brat?text=${encodeURIComponent(text)}`;
-                    
-                    // Download buffer
-                    const { data } = await axios.get(url, { responseType: 'arraybuffer' });
+                // DAFTAR SERVER (Urutan Prioritas: Siputzx -> Caliph -> Ryzendesu)
+                // Siputzx biasanya emojinya lebih rapi (kecil)
+                const apis = [
+                    `https://api.siputzx.my.id/api/m/brat?text=${encodeURIComponent(text)}`,
+                    `https://brat.caliph.dev/api/brat?text=${encodeURIComponent(text)}`,
+                    `https://api.ryzendesu.vip/api/maker/brat?text=${encodeURIComponent(text)}`
+                ];
 
-                    // Kirim stiker
-                    await sendStickerWithMeta(sock, from, data, {
-                        packname: "BangBot",
-                        author: "Brat Generator"
-                    });
-
-                } catch (e) {
-                    console.error("Brat Error:", e);
-                    // Fallback kalau Ryzendesu mati juga, coba API lain (Siputzx)
+                for (const url of apis) {
                     try {
-                        const urlBackup = `https://api.siputzx.my.id/api/m/brat?text=${encodeURIComponent(text)}`;
-                        const { data } = await axios.get(urlBackup, { responseType: 'arraybuffer' });
-                        await sendStickerWithMeta(sock, from, data, { packname: "BangBot", author: "Brat Backup" });
-                    } catch (err2) {
-                         await sock.sendMessage(from, { text: "⚠️ Semua server Brat lagi down Bang. Coba nanti lagi." }, { quoted: msg });
+                        const { data } = await axios.get(url, { 
+                            responseType: 'arraybuffer',
+                            timeout: 5000 // Maksimal nunggu 5 detik per server
+                        });
+
+                        // Cek header untuk memastikan itu gambar, bukan error text
+                        // (Kadang API error tapi balikin status 200)
+                        if (data.length < 1000) continue; // Skip kalau file kekecilan (biasanya error json)
+
+                        await sendStickerWithMeta(sock, from, data, {
+                            packname: "BangBot",
+                            author: "Brat Generator"
+                        });
+                        return; // Kalau sukses, stop loop (jangan coba server lain)
+
+                    } catch (e) {
+                        console.log("Server Brat skip:", e.message);
+                        continue; // Coba server berikutnya
                     }
                 }
+
+                await sock.sendMessage(from, { text: "⚠️ Semua server Brat lagi down/limit. Coba lagi nanti." }, { quoted: msg });
             }
 
 // =================================================
-            // BRATVID (MULTI-API) — SPEED NORMAL & READABLE 🐢
+            // BRATVID (MULTI-API) — EMOJI PROPOSIONAL 🎞️
             // =================================================
             if (cmd === "!bratvid") {
                 const text = teks.replace(/!bratvid/i, "").trim();
@@ -3516,18 +3524,19 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                     return;
                 }
 
-                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
-                await sock.sendMessage(from, { text: "Otw bikin..." }, { quoted: msg });
+                await sock.sendMessage(from, { react: { text: "⏳", key: msg.key } });
+                await sock.sendMessage(from, { text: "⏳ Otw bikin animasi..." }, { quoted: msg });
 
                 try {
                     const id = Date.now();
                     const framePaths = [];
                     
-                    // --- DAFTAR API CADANGAN ---
+                    // --- DAFTAR API (Prioritas: Siputzx -> Caliph -> Ryzendesu) ---
+                    // Ryzendesu ditaruh terakhir karena emojinya suka kegedean
                     const apiProviders = [
+                        (t) => `https://api.siputzx.my.id/api/m/brat?text=${encodeURIComponent(t)}`,
                         (t) => `https://brat.caliph.dev/api/brat?text=${encodeURIComponent(t)}`,
-                        (t) => `https://api.ryzendesu.vip/api/maker/brat?text=${encodeURIComponent(t)}`,
-                        (t) => `https://api.siputzx.my.id/api/m/brat?text=${encodeURIComponent(t)}`
+                        (t) => `https://api.ryzendesu.vip/api/maker/brat?text=${encodeURIComponent(t)}`
                     ];
 
                     // --- FUNGSI DOWNLOAD PINTAR ---
@@ -3562,19 +3571,17 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                         return;
                     }
 
-                    // --- RENDER ANIMASI (SPEED DIPERLAMBAT) ---
+                    // --- RENDER ANIMASI (SPEED ESTETIK) ---
                     const output = `./bratvid_${id}.webp`;
                     
-                    // Tahan frame terakhir agak lama (biar user sempet baca endingnya)
+                    // Tahan frame terakhir 15x
                     const lastFrame = framePaths[framePaths.length - 1];
-                    for (let k = 0; k < 15; k++) framePaths.push(lastFrame); // Diperbanyak jadi 15x
+                    for (let k = 0; k < 15; k++) framePaths.push(lastFrame);
 
                     const fileListStr = framePaths.join(" ");
                     
                     await new Promise((resolve, reject) => {
-                        // SETTINGAN KECEPATAN DI SINI:
-                        // -delay 40 = 0.4 detik per kata (Lebih santai & kebaca)
-                        // Kalau masih kecepetan, ganti jadi 50 atau 60.
+                        // -delay 40 = 0.4 detik (agak lambat biar kebaca)
                         exec(`magick ${fileListStr} -loop 0 -delay 40 "${output}"`, (err) => {
                             if (err) reject(err);
                             else resolve();
