@@ -189,6 +189,9 @@ const JimpPkg = require("jimp");
 const Jimp = JimpPkg.Jimp || JimpPkg; // kompatibel Jimp lama & baru
 const QrCodeReader = require('qrcode-reader');
 
+// --- MAP PENYIMPAN SESI BALASAN ---
+const activeConfess = {};
+
 // =========================================================
 // PDF MERGE QUEUE (per chat)
 // =========================================================
@@ -3011,6 +3014,7 @@ async function startBot() {
 ══════════════
 𝙏𝙤𝙤𝙡𝙨 & 𝙄𝙣𝙛𝙤
 ══════════════
+• !𝘤𝘰𝘯𝘧𝘦𝘴𝘴 08123** | 𝘗𝘦𝘴𝘢𝘯 | 𝘗𝘦𝘯𝘨𝘪𝘳𝘪𝘮
 • !𝘭𝘪𝘳𝘪𝘬 [𝘫𝘶𝘥𝘶𝘭] → 𝘊𝘢𝘳𝘪 𝘭𝘪𝘳𝘪𝘬 𝘭𝘢𝘨𝘶 + 𝘤𝘰𝘷𝘦𝘳 𝘢𝘭𝘣𝘶𝘮
 • !𝘣𝘪𝘭𝘭 [𝘵𝘰𝘵𝘢𝘭] [𝘰𝘳𝘢𝘯𝘨/@𝘵𝘢𝘨] → 𝘏𝘪𝘵𝘶𝘯𝘨 𝘱𝘢𝘵𝘶𝘯𝘨𝘢𝘯 𝘰𝘵𝘰𝘮𝘢𝘵𝘪𝘴
 • !𝘲𝘳 𝘵𝘦𝘬𝘴 → 𝘘𝘙 𝘤𝘰𝘥𝘦
@@ -3461,68 +3465,99 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
             }
 
 // =================================================
-            // FITUR CONFESS / MENFESS (BISA PAKAI NAMA / ANONIM)
+            // FITUR CONFESS (VERSI MANUAL !BALAS)
             // =================================================
             if (cmd === "!confess" || cmd === "!menfess" || cmd === "!surat") {
                 const raw = teks.replace(cmd, "").trim();
                 const parts = raw.split("|");
 
-                // Cek minimal harus ada Nomor dan Pesan
                 if (parts.length < 2) {
                     return sock.sendMessage(from, { 
-                        text: `⚠️ Format salah Bang.\n\n*Format Pakai Nama:*\n${cmd} 0812xxx | Isinya | Nama Kamu\n\n*Format Anonim (Rahasia):*\n${cmd} 0812xxx | Isinya` 
+                        text: `⚠️ Format salah Bang.\n\nContoh:\n*${cmd} 0812xxx | Isi Pesan | Nama Pengirim (Opsional)*` 
                     }, { quoted: msg });
                 }
 
-                let targetNum = parts[0].trim();
+                let targetNum = parts[0].trim().replace(/[^0-9]/g, '');
                 const pesan = parts[1].trim();
-                
-                // LOGIKA NAMA PENGIRIM:
-                // Cek apakah ada bagian ke-3? Kalau ada dan gak kosong, pakai itu.
-                // Kalau gak ada, set jadi "Rahasia".
                 let pengirim = parts[2] ? parts[2].trim() : "Rahasia";
-                if (pengirim === "") pengirim = "Rahasia"; 
 
-                if (!targetNum || !pesan) {
-                    return sock.sendMessage(from, { text: "Nomor atau pesannya jangan kosong Bang." }, { quoted: msg });
-                }
-
-                // --- PROSES NOMOR ---
-                targetNum = targetNum.replace(/[^0-9]/g, '');
+                // Format nomor ke 628xxx
                 if (targetNum.startsWith('08')) {
                     targetNum = '62' + targetNum.slice(1);
                 }
                 const targetJid = targetNum + '@s.whatsapp.net';
 
+                if (targetJid === from) return sock.sendMessage(from, { text: "Gak bisa kirim ke diri sendiri Bang." }, { quoted: msg });
+
                 try {
-                    // Cek nomor valid di WA (Biar gak nyasar)
                     const [result] = await sock.onWhatsApp(targetJid);
                     if (!result || !result.exists) {
-                        return sock.sendMessage(from, { text: "❌ Nomor tujuan tidak terdaftar di WhatsApp." }, { quoted: msg });
+                        return sock.sendMessage(from, { text: "❌ Nomor tidak terdaftar di WhatsApp." }, { quoted: msg });
                     }
 
-                    // --- SUSUN PESAN ---
+                    // 🔥 SIMPAN SESI: Biar target bisa balas ke pengirim ini
+                    activeConfess[targetJid] = from; 
+
+                    // Pesan untuk Target
                     const confessMsg = 
-`*ADA YANG CONFESS NIH*
+`*PESAN ANONIM*
 Dari: *${pengirim}*
--------------------------------------
+
 "${pesan}"
--------------------------------------
-_Pesan ini dikirim secara anonim._`;
+
+_Ingin membalas pesan ini?_
+_Ketik: *!balas* pesanmu_
+_(Identitas pengirim tetap aman)_`;
 
                     // Kirim ke Target
                     await sock.sendMessage(targetJid, { text: confessMsg });
 
-                    // Lapor ke Pengirim Asli
+                    // Lapor ke Pengirim
                     await sock.sendMessage(from, { 
-                        text: `✅ Sukses! Pesan terkirim ke *${targetNum}*.\n👤 Sebagai: *${pengirim}*` 
+                        text: `✅ Berhasil terkirim ke *${targetNum}*.\nKalau dia membalas pakai command *!balas*, chatnya akan masuk ke sini.` 
                     }, { quoted: msg });
 
                 } catch (err) {
                     console.error("Confess Error:", err);
-                    await sock.sendMessage(from, { text: "Gagal kirim. Pastikan nomornya benar." }, { quoted: msg });
+                    await sock.sendMessage(from, { text: "Gagal mengirim pesan." }, { quoted: msg });
                 }
-                return;
+            }
+
+// =================================================
+            // FITUR BALAS CONFESS
+            // =================================================
+            if (cmd === "!balas") {
+                // Cek apakah ada yang pernah confess ke dia?
+                const targetReplyJid = activeConfess[from]; // 'from' disini adalah si penerima confess tadi
+
+                if (!targetReplyJid) {
+                    return sock.sendMessage(from, { text: "❌ Tidak ada pesan Confess yang aktif untuk dibalas." }, { quoted: msg });
+                }
+
+                const isiBalasan = teks.replace("!balas", "").trim();
+                if (!isiBalasan) {
+                    return sock.sendMessage(from, { text: "Pesannya mana? Ketik: *!balas isi pesan*" }, { quoted: msg });
+                }
+
+                try {
+                    // Kirim balasan ke Pengirim Awal
+                    const replyMsg = 
+`*BALASAN*
+
+"${isiBalasan}"
+
+_Ini adalah balasan dari target Confess kamu._
+_Untuk membalas balik, gunakan command *!confess* lagi._`;
+
+                    await sock.sendMessage(targetReplyJid, { text: replyMsg });
+
+                    // Konfirmasi ke Penjawab
+                    await sock.sendMessage(from, { text: "✅ Balasan terkirim ke pengirim rahasia." }, { quoted: msg });
+
+                } catch (e) {
+                    console.log("Gagal balas:", e);
+                    await sock.sendMessage(from, { text: "Gagal mengirim balasan." }, { quoted: msg });
+                }
             }
 
 // =================================================
