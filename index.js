@@ -2564,50 +2564,51 @@ async function startBot() {
         }
     });
 
-    // =========================================================
-    // 🔥 FITUR WELCOME & GOODBYE (REVISI FIX ERROR)
+// =========================================================
+    // 🔥 FITUR WELCOME & GOODBYE (VERSI GIF / ANIMASI)
     // =========================================================
     sock.ev.on('group-participants.update', async (anu) => {
-        console.log("👋 DETEKSI MEMBER:", anu); 
+        console.log("👋 DETEKSI MEMBER:", anu);
         try {
             const { id, participants, action } = anu;
+            const metadata = await sock.groupMetadata(id);
             
-            // Loop peserta
-            for (const item of participants) {
-                // DETEKSI JID (NOMOR HP)
-                // Cek apakah item itu object (versi baru) atau string (versi lama)
-                const num = (typeof item === 'object') ? (item.phoneNumber || item.id) : item;
+            // --- SETTING LINK GIF DI SINI ---
+            // Cari link GIF yang berakhiran .mp4 atau .gif (harus direct link)
+            const welcomeGif = 'https://media1.tenor.com/m/z8-F355sqFYAAAAC/welcome.gif'; // Contoh: Spongebob Welcome
+            const goodbyeGif = 'https://media1.tenor.com/m/1r_IXDiKERkAAAAC/good-bye-spongebob.gif'; // Contoh: Spongebob Bye
+            // --------------------------------
 
-                // Pastikan formatnya beneran string JID
+            for (const item of participants) {
+                // Deteksi nomor (handle format object/string baru)
+                const num = (typeof item === 'object') ? (item.phoneNumber || item.id) : item;
                 if (!num || typeof num !== 'string') continue;
 
-                // Ambil PP
-                let ppuser;
-                try {
-                    ppuser = await sock.profilePictureUrl(num, 'image');
-                } catch {
-                    ppuser = 'https://telegra.ph/file/24fa902ead26340f3df2c.png';
-                }
-
-                // Pesan
                 const username = num.split('@')[0];
+
                 if (action === 'add') {
+                    const weltext = `Halo @${username} 👋\nSelamat datang di *${metadata.subject}*!\n\n*!menu* untuk lihat fitur bot.`;
+                    
                     await sock.sendMessage(id, { 
-                        image: { url: ppuser }, 
-                        caption: `Halo @${username} 👋\nSelamat datang!\n!menu untuk lihat fitur bot.`, 
+                        video: { url: welcomeGif }, // Wajib 'video'
+                        gifPlayback: true,          // Biar gerak looping kayak GIF
+                        caption: weltext, 
                         mentions: [num] 
                     });
                 } 
                 else if (action === 'remove') {
+                    const byetext = `Selamat tinggal @${username} 👋\nSemoga tenang di alam sana.`;
+                    
                     await sock.sendMessage(id, { 
-                        image: { url: ppuser }, 
-                        caption: `Selamat tinggal @${username} 👋\nSemoga tenang di alam sana.`, 
+                        video: { url: goodbyeGif }, 
+                        gifPlayback: true, 
+                        caption: byetext, 
                         mentions: [num] 
                     });
                 }
             }
         } catch (err) {
-            console.log("❌ Error Welcome:", err);
+            console.log("❌ Error Welcome GIF:", err);
         }
     });
 
@@ -3499,7 +3500,7 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
             }
 
 // =================================================
-            // BRATVID (API BARU) — FIX ERROR REPLY 🎞️
+            // BRATVID (API RYZENDESU) — FIX STABIL & EMOJI 🎞️
             // =================================================
             if (cmd === "!bratvid") {
                 const text = teks.replace(/!bratvid/i, "").trim();
@@ -3522,6 +3523,7 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                     const id = Date.now();
                     const framePaths = [];
                     
+                    // --- STEP 1: DOWNLOAD FRAME DARI API ---
                     for (let i = 0; i < words.length; i++) {
                         const currentText = words.slice(0, i + 1).join(" ");
                         
@@ -3534,10 +3536,10 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                             fs.writeFileSync(frameFile, data);
                             framePaths.push(frameFile);
                         } catch (err) {
-                            console.log(`Frame ${i} gagal: ${err.message}`);
+                            console.log(`Frame ${i} gagal download, skip.`);
                         }
                         
-                        // Jeda aman
+                        // Jeda 0.5 detik biar gak dianggap spam sama server API
                         await new Promise(r => setTimeout(r, 500)); 
                     }
 
@@ -3546,27 +3548,33 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                         return;
                     }
 
+                    // --- STEP 2: GABUNG JADI ANIMASI (FFMPEG / IMAGEMAGICK) ---
                     const output = `./bratvid_${id}.webp`;
                     
-                    // Ulangi frame terakhir 10x biar kebaca
+                    // Ulangi frame terakhir 10x biar teks lengkap terbaca lama
                     const lastFrame = framePaths[framePaths.length - 1];
                     for (let k = 0; k < 10; k++) framePaths.push(lastFrame);
 
                     const fileListStr = framePaths.join(" ");
                     
+                    // Render animasi pakai ImageMagick
                     await new Promise((resolve, reject) => {
+                        // -loop 0 = gerak terus
+                        // -delay 15 = kecepatan standar (makin kecil makin ngebut)
                         exec(`magick ${fileListStr} -loop 0 -delay 15 "${output}"`, (err) => {
                             if (err) reject(err);
                             else resolve();
                         });
                     });
 
+                    // --- STEP 3: KIRIM & BERSIH-BERSIH ---
                     const st = fs.readFileSync(output);
                     await sendStickerWithMeta(sock, from, st, {
                         packname: "BangBot",
                         author: "Brat Animation"
                     });
 
+                    // Hapus file sampah
                     [...new Set(framePaths)].forEach(f => { if (fs.existsSync(f)) fs.unlinkSync(f); });
                     if (fs.existsSync(output)) fs.unlinkSync(output);
 
