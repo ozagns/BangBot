@@ -3556,14 +3556,14 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
 
                         const cmdFrame =
                             `magick -background white -fill black ` +
-                            `-font "${IPHONE_FONT_PATH}" -pointsize 120 ` +
-                            `-gravity northwest ` +
-                            `-interword-spacing 10 -interline-spacing 15 ` +
-                            `caption:@${txtFile} ` +
-                            `-bordercolor white -border 50x50 ` +
-                            `-resize 512x512^ ` +
-                            `-gravity center -extent 512x512 ` +
-                            `-blur 0x2.5 "${pngFile}"`;
+                            `-font "${IPHONE_FONT_PATH}" ` +
+                            `-size 400x400 ` + // 1. Bikin kotak teks biar gak nabrak pinggir
+                            `-gravity center ` + // 2. Posisi teks di tengah
+                            `caption:@${txtFile} ` + // 3. Auto-size font menyesuaikan kotak
+                            `-bordercolor white -border 56x56 ` + // 4. Tambah border putih
+                            `-resize 512x512 ` + // 5. Resize pas (HAPUS tanda ^)
+                            `-gravity center -extent 512x512 ` + // 6. Pastikan output tetap kotak
+                            `-blur 0x3 "${pngFile}"`;
 
                         await execAsync(cmdFrame);
 
