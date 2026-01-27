@@ -3459,150 +3459,125 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                 return;
             }
 
-            // =================================================
-            // BRAT TEXT → STIKER (STATIS)
+// =================================================
+            // BRAT (API VERSION) — SUPPORT EMOJI 😝
             // =================================================
             if (cmd === "!brat") {
-                const raw = teks.replace(/!brat/i, "").trim();
+                const text = teks.replace(/!brat/i, "").trim();
 
-                if (!raw) {
-                    await sock.sendMessage(from, {
-                        text: "Format: !brat teks yang mau dijadikan stiker"
-                    });
+                if (!text) {
+                    await sock.sendMessage(from, { text: "Teksnya mana Bang?" }, { quoted: msg });
                     return;
                 }
 
-                const formatted = bratifyText(raw);
+                try {
+                    // Kasih reaksi biar tau bot lagi kerja
+                    await sock.sendMessage(from, { react: { text: "⏳", key: msg.key } });
 
-                const txtFile = "./brat_text.txt";
-                const out = "./brat.webp";
+                    // Gunakan API Caliph (Gratis & Support Emoji)
+                    // encodeURIComponent wajib biar emoji/spasi gak bikin link error
+                    const url = `https://brat.caliph.dev/api/brat?text=${encodeURIComponent(text)}`;
+                    
+                    // Download hasil gambar dari API
+                    const { data } = await axios.get(url, { responseType: 'arraybuffer' });
 
-                fs.writeFileSync(txtFile, formatted, "utf8");
+                    // Langsung jadiin stiker
+                    await sendStickerWithMeta(sock, from, data, {
+                        packname: "BangBot",
+                        author: "Brat Generator"
+                    });
 
-                const cmdMagick =
-                    `magick -background white -fill black ` +
-                    `-font "${IPHONE_FONT_PATH}" ` + 
-                    `-size 400x400 ` + // 1. Batasi area teks biar ada margin
-                    `-gravity center ` + // 2. Teks di tengah
-                    `caption:@${txtFile} ` + // 3. caption: otomatis atur ukuran font biar muat
-                    `-bordercolor white -border 56x56 ` + // 4. Tambah border putih
-                    `-resize 512x512 ` + // 5. Resize pas (bukan crop)
-                    `-gravity center -extent 512x512 ` + // 6. Pastikan kanvas akhir kotak sempurna
-                    `-blur 0x3 "${out}"`; // Blur dikit biar estetik brat
-
-                exec(cmdMagick, async (err) => {
-                    if (err) {
-                        console.error("brat error:", err);
-                        await sock.sendMessage(from, {
-                            text: "Gagal membuat stiker brat."
-                        });
-                        return;
-                    }
-
-                    try {
-                        const st = fs.readFileSync(out);
-
-                        await sendStickerWithMeta(sock, from, st, {
-                            packname: "BangBot",
-                            author: "BangBot"
-                        });
-
-                        fs.unlinkSync(txtFile);
-                        fs.unlinkSync(out);
-
-                    } catch (e) {
-                        console.error("Send brat sticker error:", e);
-                    }
-                });
+                } catch (e) {
+                    console.error("Brat API Error:", e);
+                    await sock.sendMessage(from, { text: "Gagal membuat stiker (Server API Sibuk)." }, { quoted: msg });
+                }
+                return;
             }
 
 // =================================================
-            // BRATVID — TEKS → STIKER BRAT ANIMASI (REVISI FIX)
+            // BRATVID (API VERSION) — SUPPORT EMOJI 🎞️
             // =================================================
             if (cmd === "!bratvid") {
-                const raw = teks.replace(/!bratvid/i, "").trim();
+                const text = teks.replace(/!bratvid/i, "").trim();
 
-                if (!raw) {
-                    await sock.sendMessage(from, { text: "Format: !bratvid teks panjang" }, { quoted: msg });
+                if (!text) {
+                    await sock.sendMessage(from, { text: "Teksnya mana Bang?" }, { quoted: msg });
                     return;
                 }
 
-                await sock.sendMessage(from, { text: "⏳ Bikin animasi brat..." }, { quoted: msg });
+                // Batasi panjang teks biar gak spamming API
+                const words = text.split(/\s+/);
+                if (words.length > 30) {
+                    await sock.sendMessage(from, { text: "Kepanjangan Bang! Maksimal 30 kata aja ya." }, { quoted: msg });
+                    return;
+                }
 
-                const baseWords = raw.trim().split(/\s+/);
-                const totalWords = baseWords.length;
-                const maxFrames = 8; // Tambah dikit biar lebih halus
-                const frameCount = Math.min(maxFrames, totalWords);
-
-                // Pakai Random ID biar file gak tabrakan sama orang lain
-                const id = Date.now(); 
-                const framePngs = [];
-                const txtFiles = [];
+                await sock.sendMessage(from, { react: { text: "⏳", key: msg.key } });
+                await sock.sendMessage(from, { text: "⏳ Otw request ke server brat..." }, { quoted: msg });
 
                 try {
-                    for (let i = 1; i <= frameCount; i++) {
-                        // Logika progressif kata
-                        let targetCount = Math.ceil((totalWords * i) / frameCount);
-                        if (targetCount > totalWords) targetCount = totalWords;
-
-                        const segmentWords = baseWords.slice(0, targetCount);
-                        const segmentText = segmentWords.join(" ");
+                    // Pakai Random ID biar file gak tabrakan
+                    const id = Date.now();
+                    const framePaths = [];
+                    
+                    // --- STEP 1: DOWNLOAD FRAME DARI API ---
+                    for (let i = 0; i < words.length; i++) {
+                        // Gabungkan kata secara bertahap
+                        // Contoh: "Aku", "Aku Sayang", "Aku Sayang Kamu"
+                        const currentText = words.slice(0, i + 1).join(" ");
                         
-                        // Format teks ala brat (acak spasi/enter)
-                        const formatted = bratifyText(segmentText);
-
-                        const txtFile = `./bratvid_${id}_${i}.txt`;
-                        const pngFile = `./bratvid_${id}_${i}.png`;
-
-                        fs.writeFileSync(txtFile, formatted, "utf8");
-
-                        // --- PERBAIKAN UTAMA DI SINI ---
-                        // 1. Hapus '-pointsize 120' (Biar font auto-size)
-                        // 2. Pakai '-size 400x400' (Bikin kotak teks aman)
-                        // 3. Hapus tanda '^' di resize (Biar gak di-zoom paksa)
-                        const cmdFrame =
-                            `magick -background white -fill black ` +
-                            `-font "${IPHONE_FONT_PATH}" ` +
-                            `-size 400x400 ` +          // Kotak teks (ada margin)
-                            `-gravity center ` +        // Posisi tengah
-                            `caption:@${txtFile} ` +    // Auto-fit teks ke kotak
-                            `-bordercolor white -border 56x56 ` + // Border putih sekeliling
-                            `-resize 512x512 ` +        // Ukuran akhir stiker
-                            `-blur 0x3 "${pngFile}"`;   // Blur dikit biar estetik
-
-                        await execAsync(cmdFrame);
-
-                        // Ulangi frame terakhir biar bacanya enak (tahan lama dikit)
-                        const repeatCount = (i === frameCount) ? 10 : 3; 
-                        for (let r = 0; r < repeatCount; r++) {
-                            framePngs.push(pngFile);
-                        }
-                        txtFiles.push(txtFile);
+                        const url = `https://brat.caliph.dev/api/brat?text=${encodeURIComponent(currentText)}`;
+                        
+                        // Download buffer gambar
+                        const { data } = await axios.get(url, { responseType: 'arraybuffer' });
+                        
+                        const frameFile = `./bratframe_${id}_${i}.png`;
+                        fs.writeFileSync(frameFile, data);
+                        framePaths.push(frameFile);
+                        
+                        // Kasih jeda dikit biar API gak marah (Anti-Banned)
+                        await new Promise(r => setTimeout(r, 200)); 
                     }
 
+                    // --- STEP 2: GABUNG JADI ANIMASI ---
                     const output = `./bratvid_${id}.webp`;
+                    
+                    // Ulangi frame terakhir biar user sempat baca (Hold 10 frame)
+                    const lastFrame = framePaths[framePaths.length - 1];
+                    for (let k = 0; k < 10; k++) {
+                        framePaths.push(lastFrame);
+                    }
 
-                    // Gabung jadi animasi (delay 20ms biar ngebut dikit ala brat)
-                    const cmdAnim = `magick ${framePngs.join(" ")} -loop 0 -delay 20 "${output}"`;
-
-                    await execAsync(cmdAnim);
-
-                    const st = fs.readFileSync(output);
-
-                    await sendStickerWithMeta(sock, from, st, {
-                        packname: "BangBot",
-                        author: "BangBot"
+                    // Command ImageMagick buat bikin animasi
+                    // -delay 15 = kecepatan animasi (makin kecil makin ngebut)
+                    // -loop 0 = gerak terus gak berhenti
+                    const fileListStr = framePaths.join(" ");
+                    
+                    // Kita pakai execAsync biar rapi (pastikan fungsi ini ada, kalau gak ada pake exec biasa)
+                    await new Promise((resolve, reject) => {
+                        exec(`magick ${fileListStr} -loop 0 -delay 15 "${output}"`, (err) => {
+                            if (err) reject(err);
+                            else resolve();
+                        });
                     });
 
-                    // Bersih-bersih file sampah
-                    // Kita pakai Set biar file png yg diduplicate cuma dihapus sekali
-                    [...new Set(framePngs)].forEach(f => { if(fs.existsSync(f)) fs.unlinkSync(f) });
-                    txtFiles.forEach(t => { if(fs.existsSync(t)) fs.unlinkSync(t) });
-                    if(fs.existsSync(output)) fs.unlinkSync(output);
+                    // --- STEP 3: KIRIM & BERSIH-BERSIH ---
+                    const st = fs.readFileSync(output);
+                    
+                    await sendStickerWithMeta(sock, from, st, {
+                        packname: "BangBot",
+                        author: "Brat Animation"
+                    });
 
-                } catch (err) {
-                    console.error("bratvid error:", err);
-                    await sock.sendMessage(from, { text: "Gagal membuat stiker animasi." }, { quoted: msg });
+                    // Hapus file sampah
+                    [...new Set(framePaths)].forEach(f => { 
+                        if (fs.existsSync(f)) fs.unlinkSync(f); 
+                    });
+                    if (fs.existsSync(output)) fs.unlinkSync(output);
+
+                } catch (e) {
+                    console.error("BratVid API Error:", e);
+                    await sock.sendMessage(from, { text: "Gagal bikin animasi (Server API Timeout/Error)." }, { quoted: msg });
                 }
             }
 
