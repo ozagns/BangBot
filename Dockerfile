@@ -15,25 +15,25 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# 2. Install Python Tools (HAPUS break-system-packages KARENA BULLSEYE GAK PERLU)
+# 2. Install Python Tools
 RUN pip3 install yt-dlp gallery-dl speedtest-cli
 
 # 3. Setup Folder Kerja
 WORKDIR /usr/src/app
 
-# 4. COPY SEMUA FILE DULU
+# 4. Copy Semua File
 COPY . .
 
-# 5. 🔥 BERSIH-BERSIH TOTAL (Jurus Anti Gagal) 🔥
-# Hapus node_modules & package-lock bawaan laptop biar gak ngerusak server
+# 5. Bersih-bersih file sampah dari laptop
 RUN rm -rf node_modules package-lock.json
 
-# 6. INSTALL DARI NOL (Fresh Install)
-RUN npm install
+# 6. 🔥 INSTALL DENGAN MODE 'BODO AMAT' (Fix ERESOLVE) 🔥
+# --legacy-peer-deps = Abaikan warning konflik versi dari Baileys
+RUN npm install --legacy-peer-deps
 
-# 7. 🔥 JURUS PAKSA: Pastikan Jimp versi 0.16.13 (Biar Welcome/IQC Gak Error)
-RUN npm uninstall jimp && npm install jimp@0.16.13
+# 7. Pastikan Jimp versi 0.16.13 terinstall kuat
+RUN npm uninstall jimp && npm install jimp@0.16.13 --legacy-peer-deps
 
-# 8. Buka Port & Jalankan
+# 8. Jalankan
 EXPOSE 8080
 CMD ["node", "index.js"]
