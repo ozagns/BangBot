@@ -2844,27 +2844,25 @@ async function startBot() {
             // 1. MENU UTAMA (Daftar Kategori)
             if (cmd === "!menu" || cmd === "!help") {
                 const menuMsg = 
-`*BANGBOT DASHBOARD*
-_Halo ${pushname}, pilih menu di bawah ini:_
-
-*!menuutama*
-*!menustiker*
-*!menuconvert*
-*!menuimage*
-*!menuaudio*
-*!menuvideo*
-*!menufun*
-*!menudownload*
-*!menuoffice*
-*!menutools*
-*!menuinfo*
-*!menuai*
-*!menuedukasi*
-*!menureligi*
-*!menuemergency*
-*!menufinance*
-*!menudonate*
-*!allmenu*`;
+`*_Halo, pilih menu di bawah ini:_*
+• !menuutama
+• !menustiker
+• !menuconvert
+• !menuimage
+• !menuaudio
+• !menuvideo
+• !menufun
+• !menudownload
+• !menuoffice
+• !menutools
+• !menuinfo
+• !menuai
+• !menuedukasi
+• !menureligi
+• !menuemergency
+• !menufinance
+• !menudonate
+• !allmenu`;
 
                 await sock.sendMessage(from, { text: menuMsg }, { quoted: msg });
             }
