@@ -3500,7 +3500,7 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
             }
 
 // =================================================
-            // BRATVID (MULTI-API AUTO-SWITCH) — ANTI ERROR 🛡️
+            // BRATVID (MULTI-API) — SPEED NORMAL & READABLE 🐢
             // =================================================
             if (cmd === "!bratvid") {
                 const text = teks.replace(/!bratvid/i, "").trim();
@@ -3523,69 +3523,58 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                     const id = Date.now();
                     const framePaths = [];
                     
-                    // --- DAFTAR API CADANGAN (Urutan Prioritas) ---
+                    // --- DAFTAR API CADANGAN ---
                     const apiProviders = [
-                        (t) => `https://brat.caliph.dev/api/brat?text=${encodeURIComponent(t)}`, // Utama
-                        (t) => `https://api.ryzendesu.vip/api/maker/brat?text=${encodeURIComponent(t)}`, // Cadangan 1
-                        (t) => `https://api.siputzx.my.id/api/m/brat?text=${encodeURIComponent(t)}`  // Cadangan 2
+                        (t) => `https://brat.caliph.dev/api/brat?text=${encodeURIComponent(t)}`,
+                        (t) => `https://api.ryzendesu.vip/api/maker/brat?text=${encodeURIComponent(t)}`,
+                        (t) => `https://api.siputzx.my.id/api/m/brat?text=${encodeURIComponent(t)}`
                     ];
 
                     // --- FUNGSI DOWNLOAD PINTAR ---
                     const downloadFrame = async (txt) => {
-                        // Coba satu per satu API sampai berhasil
                         for (const getUrl of apiProviders) {
                             try {
                                 const url = getUrl(txt);
-                                const res = await axios.get(url, { 
-                                    responseType: 'arraybuffer',
-                                    timeout: 5000 // Maksimal nunggu 5 detik per API
-                                });
-                                
-                                // Cek Header: Beneran gambar gak?
+                                const res = await axios.get(url, { responseType: 'arraybuffer', timeout: 5000 });
                                 const contentType = res.headers['content-type'] || '';
-                                if (contentType.includes('image')) {
-                                    return res.data; // Berhasil dapet gambar!
-                                }
-                            } catch (e) {
-                                // Lanjut ke API berikutnya kalau error
-                                continue;
-                            }
+                                if (contentType.includes('image')) return res.data;
+                            } catch (e) { continue; }
                         }
-                        throw new Error("Semua API Down/Gagal");
+                        throw new Error("Semua API Down");
                     };
 
-                    // --- MULAI LOOPING KATA ---
+                    // --- DOWNLOAD FRAME ---
                     for (let i = 0; i < words.length; i++) {
                         const currentText = words.slice(0, i + 1).join(" ");
-                        
                         try {
                             const imgBuffer = await downloadFrame(currentText);
                             const frameFile = `./bratframe_${id}_${i}.png`;
                             fs.writeFileSync(frameFile, imgBuffer);
                             framePaths.push(frameFile);
                         } catch (err) {
-                            console.log(`❌ Frame ${i} gagal total (skip): ${err.message}`);
+                            console.log(`❌ Frame ${i} skip: ${err.message}`);
                         }
-                        
-                        // Jeda dikit biar gak spam
                         await new Promise(r => setTimeout(r, 200)); 
                     }
 
                     if (framePaths.length === 0) {
-                        await sock.sendMessage(from, { text: "Gagal total Bang. Semua server API lagi mati suri." }, { quoted: msg });
+                        await sock.sendMessage(from, { text: "Gagal total Bang. API lagi pada tidur." }, { quoted: msg });
                         return;
                     }
 
-                    // --- RENDER ANIMASI ---
+                    // --- RENDER ANIMASI (SPEED DIPERLAMBAT) ---
                     const output = `./bratvid_${id}.webp`;
                     
-                    // Duplicate frame terakhir (Hold)
+                    // Tahan frame terakhir agak lama (biar user sempet baca endingnya)
                     const lastFrame = framePaths[framePaths.length - 1];
-                    for (let k = 0; k < 10; k++) framePaths.push(lastFrame);
+                    for (let k = 0; k < 15; k++) framePaths.push(lastFrame); // Diperbanyak jadi 15x
 
                     const fileListStr = framePaths.join(" ");
                     
                     await new Promise((resolve, reject) => {
+                        // SETTINGAN KECEPATAN DI SINI:
+                        // -delay 40 = 0.4 detik per kata (Lebih santai & kebaca)
+                        // Kalau masih kecepetan, ganti jadi 50 atau 60.
                         exec(`magick ${fileListStr} -loop 0 -delay 40 "${output}"`, (err) => {
                             if (err) reject(err);
                             else resolve();
@@ -3604,8 +3593,8 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                     if (fs.existsSync(output)) fs.unlinkSync(output);
 
                 } catch (e) {
-                    console.error("BratVid Fatal Error:", e);
-                    await sock.sendMessage(from, { text: "Error sistem saat render animasi." }, { quoted: msg });
+                    console.error("BratVid Error:", e);
+                    await sock.sendMessage(from, { text: "Error render animasi." }, { quoted: msg });
                 }
             }
 
