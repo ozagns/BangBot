@@ -3500,7 +3500,7 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
             }
 
 // =================================================
-            // BRATVID (API RYZENDESU) — FIX STABIL & EMOJI 🎞️
+            // BRATVID (MULTI-API AUTO-SWITCH) — ANTI ERROR 🛡️
             // =================================================
             if (cmd === "!bratvid") {
                 const text = teks.replace(/!bratvid/i, "").trim();
@@ -3512,75 +3512,100 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                 
                 const words = text.split(/\s+/);
                 if (words.length > 30) {
-                    await sock.sendMessage(from, { text: "Maksimal 30 kata aja Bang biar gak berat." }, { quoted: msg });
+                    await sock.sendMessage(from, { text: "Maksimal 30 kata aja Bang biar server gak nangis." }, { quoted: msg });
                     return;
                 }
 
                 await sock.sendMessage(from, { react: { text: "⏳", key: msg.key } });
-                await sock.sendMessage(from, { text: "⏳ Otw bikin animasi..." }, { quoted: msg });
+                await sock.sendMessage(from, { text: "⏳ Otw bikin animasi (Cek 3 Server)..." }, { quoted: msg });
 
                 try {
                     const id = Date.now();
                     const framePaths = [];
                     
-                    // --- STEP 1: DOWNLOAD FRAME DARI API ---
+                    // --- DAFTAR API CADANGAN (Urutan Prioritas) ---
+                    const apiProviders = [
+                        (t) => `https://brat.caliph.dev/api/brat?text=${encodeURIComponent(t)}`, // Utama
+                        (t) => `https://api.ryzendesu.vip/api/maker/brat?text=${encodeURIComponent(t)}`, // Cadangan 1
+                        (t) => `https://api.siputzx.my.id/api/m/brat?text=${encodeURIComponent(t)}`  // Cadangan 2
+                    ];
+
+                    // --- FUNGSI DOWNLOAD PINTAR ---
+                    const downloadFrame = async (txt) => {
+                        // Coba satu per satu API sampai berhasil
+                        for (const getUrl of apiProviders) {
+                            try {
+                                const url = getUrl(txt);
+                                const res = await axios.get(url, { 
+                                    responseType: 'arraybuffer',
+                                    timeout: 5000 // Maksimal nunggu 5 detik per API
+                                });
+                                
+                                // Cek Header: Beneran gambar gak?
+                                const contentType = res.headers['content-type'] || '';
+                                if (contentType.includes('image')) {
+                                    return res.data; // Berhasil dapet gambar!
+                                }
+                            } catch (e) {
+                                // Lanjut ke API berikutnya kalau error
+                                continue;
+                            }
+                        }
+                        throw new Error("Semua API Down/Gagal");
+                    };
+
+                    // --- MULAI LOOPING KATA ---
                     for (let i = 0; i < words.length; i++) {
                         const currentText = words.slice(0, i + 1).join(" ");
                         
-                        // PAKAI API BARU (RYZENDESU)
-                        const url = `https://api.ryzendesu.vip/api/maker/brat?text=${encodeURIComponent(currentText)}`;
-                        
                         try {
-                            const { data } = await axios.get(url, { responseType: 'arraybuffer' });
+                            const imgBuffer = await downloadFrame(currentText);
                             const frameFile = `./bratframe_${id}_${i}.png`;
-                            fs.writeFileSync(frameFile, data);
+                            fs.writeFileSync(frameFile, imgBuffer);
                             framePaths.push(frameFile);
                         } catch (err) {
-                            console.log(`Frame ${i} gagal download, skip.`);
+                            console.log(`❌ Frame ${i} gagal total (skip): ${err.message}`);
                         }
                         
-                        // Jeda 0.5 detik biar gak dianggap spam sama server API
-                        await new Promise(r => setTimeout(r, 500)); 
+                        // Jeda dikit biar gak spam
+                        await new Promise(r => setTimeout(r, 200)); 
                     }
 
                     if (framePaths.length === 0) {
-                        await sock.sendMessage(from, { text: "Gagal download frame dari server." }, { quoted: msg });
+                        await sock.sendMessage(from, { text: "Gagal total Bang. Semua server API lagi mati suri." }, { quoted: msg });
                         return;
                     }
 
-                    // --- STEP 2: GABUNG JADI ANIMASI (FFMPEG / IMAGEMAGICK) ---
+                    // --- RENDER ANIMASI ---
                     const output = `./bratvid_${id}.webp`;
                     
-                    // Ulangi frame terakhir 10x biar teks lengkap terbaca lama
+                    // Duplicate frame terakhir (Hold)
                     const lastFrame = framePaths[framePaths.length - 1];
                     for (let k = 0; k < 10; k++) framePaths.push(lastFrame);
 
                     const fileListStr = framePaths.join(" ");
                     
-                    // Render animasi pakai ImageMagick
                     await new Promise((resolve, reject) => {
-                        // -loop 0 = gerak terus
-                        // -delay 15 = kecepatan standar (makin kecil makin ngebut)
                         exec(`magick ${fileListStr} -loop 0 -delay 15 "${output}"`, (err) => {
                             if (err) reject(err);
                             else resolve();
                         });
                     });
 
-                    // --- STEP 3: KIRIM & BERSIH-BERSIH ---
+                    // --- KIRIM ---
                     const st = fs.readFileSync(output);
                     await sendStickerWithMeta(sock, from, st, {
                         packname: "BangBot",
                         author: "Brat Animation"
                     });
 
-                    // Hapus file sampah
+                    // --- BERSIH-BERSIH ---
                     [...new Set(framePaths)].forEach(f => { if (fs.existsSync(f)) fs.unlinkSync(f); });
                     if (fs.existsSync(output)) fs.unlinkSync(output);
 
                 } catch (e) {
-                    console.error("BratVid Error:", e);
-                    await sock.sendMessage(from, { text: "Gagal bikin animasi. Server lagi lelah." }, { quoted: msg });
+                    console.error("BratVid Fatal Error:", e);
+                    await sock.sendMessage(from, { text: "Error sistem saat render animasi." }, { quoted: msg });
                 }
             }
 
