@@ -1,4 +1,4 @@
-FROM node:20-bullseye
+FROM node:18-bullseye
 
 # 1. Install Aplikasi Pendukung (FFmpeg, ImageMagick, LibreOffice, dll)
 RUN apt-get update && \
