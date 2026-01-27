@@ -86,6 +86,13 @@ const { exec } = require('child_process');
 const xml2js = require("xml2js"); // npm i xml2js
 
 // =========================================================
+// HELPER: GENERIC RANDOM FILENAME (Anti-Tabrakan)
+// =========================================================
+const getRandom = (ext) => {
+    return `${Math.floor(Math.random() * 10000)}${Date.now()}.${ext}`;
+};
+
+// =========================================================
 // HELPER: execPromise (untuk yt-dlp, ffmpeg, dll)
 // =========================================================
 function execPromise(cmd) {
@@ -1027,26 +1034,6 @@ async function getCryptoPrice(coinId) {
 
     CRYPTO_CACHE.set(coinId, { ts: now, data });
     return data;
-}
-
-
-// =================================================================
-// WELCOME CARD
-// =================================================================
-async function createWelcomeCard(username, groupName, outPath) {
-    const width = 800;
-    const height = 400;
-    const bg = 0xffffffff;
-
-    const img = new Jimp(width, height, bg);
-    const fontBig = await Jimp.loadFont(Jimp.FONT_SANS_64_BLACK);
-    const fontSmall = await Jimp.loadFont(Jimp.FONT_SANS_32_BLACK);
-
-    img.print(fontBig, 30, 120, "Selamat datang,");
-    img.print(fontBig, 30, 180, username);
-    img.print(fontSmall, 30, 260, `di grup ${groupName}`);
-
-    await img.writeAsync(outPath);
 }
 
 // =================================================================
@@ -2578,45 +2565,49 @@ async function startBot() {
     });
 
     // =========================================================
-    // 🔥 FITUR WELCOME & GOODBYE (Sensor Pintu)
+    // 🔥 FITUR WELCOME & GOODBYE (REVISI FIX ERROR)
     // =========================================================
     sock.ev.on('group-participants.update', async (anu) => {
-        console.log(anu); // Cek di logs kalau ada yg join
+        console.log("👋 DETEKSI MEMBER:", anu); 
         try {
-            const metadata = await sock.groupMetadata(anu.id);
-            const participants = anu.participants;
+            const { id, participants, action } = anu;
             
-            for (let num of participants) {
-                // FOTO PROFIL (Coba ambil, kalau gak ada pake gambar default)
+            // Loop peserta
+            for (const item of participants) {
+                // DETEKSI JID (NOMOR HP)
+                // Cek apakah item itu object (versi baru) atau string (versi lama)
+                const num = (typeof item === 'object') ? (item.phoneNumber || item.id) : item;
+
+                // Pastikan formatnya beneran string JID
+                if (!num || typeof num !== 'string') continue;
+
+                // Ambil PP
                 let ppuser;
                 try {
                     ppuser = await sock.profilePictureUrl(num, 'image');
                 } catch {
-                    ppuser = 'https://telegra.ph/file/24fa902ead26340f3df2c.png'; // Gambar default (Polosan)
+                    ppuser = 'https://telegra.ph/file/24fa902ead26340f3df2c.png';
                 }
 
-                // Cek Aksi: ADD (Masuk) atau REMOVE (Keluar)
-                if (anu.action == 'add') {
-                    const weltext = `Halo @${num.split("@")[0]} 👋\nSelamat datang di Grup *${metadata.subject}*!\n\n!menu untuk cek fitur bot.`;
-                    
-                    await sock.sendMessage(anu.id, { 
+                // Pesan
+                const username = num.split('@')[0];
+                if (action === 'add') {
+                    await sock.sendMessage(id, { 
                         image: { url: ppuser }, 
-                        caption: weltext, 
+                        caption: `Halo @${username} 👋\nSelamat datang! Jangan lupa baca deskripsi grup ya.`, 
                         mentions: [num] 
                     });
                 } 
-                else if (anu.action == 'remove') {
-                    const byetext = `Selamat tinggal @${num.split("@")[0]} 👋\nSemoga tenang di alam sana.`;
-                    
-                    await sock.sendMessage(anu.id, { 
+                else if (action === 'remove') {
+                    await sock.sendMessage(id, { 
                         image: { url: ppuser }, 
-                        caption: byetext, 
+                        caption: `Selamat tinggal @${username} 👋\nSemoga tenang di alam sana.`, 
                         mentions: [num] 
                     });
                 }
             }
         } catch (err) {
-            console.log("Error Welcome:", err);
+            console.log("❌ Error Welcome:", err);
         }
     });
 
@@ -3430,8 +3421,9 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                 }
 
                 try {
-                    const input = "./img_in.jpg";
-                    const output = "./img_out.webp";
+// Panggil rumus getRandom tadi
+                    const input = `./${getRandom('jpg')}`;   // Hasilnya misal: ./8291_17458291.jpg
+                    const output = `./${getRandom('webp')}`; // Hasilnya misal: ./1928_17458291.webp
 
                     fs.writeFileSync(input, imgBuffer);
 
@@ -3449,8 +3441,13 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                         author: "BangBot"
                     });
 
-                    fs.unlinkSync(input);
-                    fs.unlinkSync(output);
+                try {
+                    if (fs.existsSync(input)) fs.unlinkSync(input);
+                } catch (e) { /* Biarin aja kalau gagal hapus */ }
+
+                try {
+                    if (fs.existsSync(output)) fs.unlinkSync(output);
+                } catch (e) { /* Biarin aja */ }
 
                 } catch (err) {
                     console.error("!s error:", err);
