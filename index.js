@@ -3508,7 +3508,7 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
             }
 
 // =================================================
-            // BRATVID (MULTI-API) — EMOJI PROPOSIONAL 🎞️
+            // BRATVID — SUPER SLOW & READABLE (DELAY 0.8s) 🐢
             // =================================================
             if (cmd === "!bratvid") {
                 const text = teks.replace(/!bratvid/i, "").trim();
@@ -3525,21 +3525,19 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                 }
 
                 await sock.sendMessage(from, { react: { text: "⏳", key: msg.key } });
-                await sock.sendMessage(from, { text: "⏳ Otw bikin animasi..." }, { quoted: msg });
+                await sock.sendMessage(from, { text: "⏳ Otw bikin animasi (Slow Mode)..." }, { quoted: msg });
 
                 try {
                     const id = Date.now();
                     const framePaths = [];
                     
                     // --- DAFTAR API (Prioritas: Siputzx -> Caliph -> Ryzendesu) ---
-                    // Ryzendesu ditaruh terakhir karena emojinya suka kegedean
                     const apiProviders = [
                         (t) => `https://api.siputzx.my.id/api/m/brat?text=${encodeURIComponent(t)}`,
                         (t) => `https://brat.caliph.dev/api/brat?text=${encodeURIComponent(t)}`,
                         (t) => `https://api.ryzendesu.vip/api/maker/brat?text=${encodeURIComponent(t)}`
                     ];
 
-                    // --- FUNGSI DOWNLOAD PINTAR ---
                     const downloadFrame = async (txt) => {
                         for (const getUrl of apiProviders) {
                             try {
@@ -3571,18 +3569,20 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                         return;
                     }
 
-                    // --- RENDER ANIMASI (SPEED ESTETIK) ---
+                    // --- RENDER ANIMASI (SUPER SLOW) ---
                     const output = `./bratvid_${id}.webp`;
                     
-                    // Tahan frame terakhir 15x
+                    // Tahan frame terakhir LEBIH LAMA LAGI (20x copy)
+                    // Biar user puas baca endingnya
                     const lastFrame = framePaths[framePaths.length - 1];
-                    for (let k = 0; k < 15; k++) framePaths.push(lastFrame);
+                    for (let k = 0; k < 20; k++) framePaths.push(lastFrame);
 
                     const fileListStr = framePaths.join(" ");
                     
                     await new Promise((resolve, reject) => {
-                        // -delay 40 = 0.4 detik (agak lambat biar kebaca)
-                        exec(`magick ${fileListStr} -loop 0 -delay 40 "${output}"`, (err) => {
+                        // UPDATE SETTINGAN KECEPATAN:
+                        // -delay 80 = 0.8 detik per frame (Lambat & Jelas)
+                        exec(`magick ${fileListStr} -loop 0 -delay 80 "${output}"`, (err) => {
                             if (err) reject(err);
                             else resolve();
                         });
