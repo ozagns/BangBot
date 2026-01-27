@@ -2508,10 +2508,16 @@ async function startBot() {
 
     const sock = makeWASocket({
         logger: pino({ level: 'silent' }),
-        printQRInTerminal: true,
         auth: state,
-        // ✅ Ganti jadi ini biar dikira Chrome Ubuntu Asli
+        printQRInTerminal: true, // Biarin true dulu biar QR muncul di logs Koyeb
+            
+            // 🔥 INI KUNCINYA BIAR GAK KENA 405 🔥
+            // Jangan pake nama "BangBot", pake "Ubuntu" biar dikira Chrome di Linux
         browser: ["Ubuntu", "Chrome", "20.0.04"], 
+            
+        // Tambahan biar koneksi stabil di server
+        syncFullHistory: false,
+        generateHighQualityLinkPreview: true,
     });
 
     sock.ev.on("creds.update", saveCreds);
