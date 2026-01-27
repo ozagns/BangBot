@@ -3472,7 +3472,7 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                 }
 
                 try {
-                    await sock.sendMessage(from, { react: { text: "⏳", key: msg.key } });
+                    await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                     // GANTI API KE RYZENDESU (Lebih Stabil)
                     const url = `https://api.ryzendesu.vip/api/maker/brat?text=${encodeURIComponent(text)}`;
@@ -3516,8 +3516,8 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                     return;
                 }
 
-                await sock.sendMessage(from, { react: { text: "⏳", key: msg.key } });
-                await sock.sendMessage(from, { text: "⏳ Otw bikin animasi (Cek 3 Server)..." }, { quoted: msg });
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+                await sock.sendMessage(from, { text: "Otw bikin..." }, { quoted: msg });
 
                 try {
                     const id = Date.now();
@@ -3586,7 +3586,7 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                     const fileListStr = framePaths.join(" ");
                     
                     await new Promise((resolve, reject) => {
-                        exec(`magick ${fileListStr} -loop 0 -delay 15 "${output}"`, (err) => {
+                        exec(`magick ${fileListStr} -loop 0 -delay 40 "${output}"`, (err) => {
                             if (err) reject(err);
                             else resolve();
                         });
