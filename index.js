@@ -184,6 +184,7 @@ async function handleOfficeToPdf(sock, from, msg, mediaMsg, fileNameHint) {
 
 const axios = require('axios');
 const cheerio = require('cheerio');
+const pino = require('pino');
 const { PDFDocument } = require("pdf-lib");
 const JimpPkg = require("jimp");
 const Jimp = JimpPkg.Jimp || JimpPkg; // kompatibel Jimp lama & baru
@@ -2506,9 +2507,11 @@ async function startBot() {
     const { version } = await fetchLatestBaileysVersion();
 
     const sock = makeWASocket({
+        logger: pino({ level: 'silent' }),
+        printQRInTerminal: true,
         auth: state,
-        browser: ["BangBot", "Chrome", "1.0.0"],
-        // opsi lain tetap
+        // ✅ Ganti jadi ini biar dikira Chrome Ubuntu Asli
+        browser: ["Ubuntu", "Chrome", "20.0.04"], 
     });
 
     sock.ev.on("creds.update", saveCreds);
