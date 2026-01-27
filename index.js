@@ -3600,7 +3600,7 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
             // =================================================
             // !s — IMAGE TO STICKER (Caption ATAU Reply)
             // =================================================
-            if (cmd === "!s") {
+            if (cmd === "!s" || cmd === "!stiker" || cmd === "!sticker" || cmd === "!stik" || cmd === "!stick") {
                 let imgBuffer = null;
 
                 // 1) Jika user reply ke foto
