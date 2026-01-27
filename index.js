@@ -4587,42 +4587,75 @@ _Semoga berkah ibadahnya Bang!_`;
                 return;
             }
 
-            // --- FITUR CEK JODOH ---
-            if (cmd === "!jodoh" || cmd === "!cekjodoh") {
-                // Format: !jodoh Romeo & Juliet
-                if (!teks.includes("&")) {
-                    return sock.sendMessage(from, { text: "Format salah Bang.\nContoh: *!jodoh Dilan & Milea*" }, { quoted: msg });
-                }
-
-                const [nama1, nama2] = teks.replace(cmd, "").trim().split("&");
+// =================================================
+            // FITUR CEK JODOH (VARIASI KOMENTAR BANYAK)
+            // =================================================
+            if (cmd === "!cekjodoh" || cmd === "!jodoh" || cmd === "!match") {
+                const raw = teks.replace(cmd, "").trim();
                 
-                if (!nama1 || !nama2) return;
-
-                // Algoritma ngawur biar seru (Hash sederhana dari nama)
-                const combined = (nama1.trim() + nama2.trim()).toLowerCase();
-                let hash = 0;
-                for (let i = 0; i < combined.length; i++) {
-                    hash = combined.charCodeAt(i) + ((hash << 5) - hash);
+                if (!raw.includes("|")) {
+                    return sock.sendMessage(from, { 
+                        text: `⚠️ Format salah Bang.\nContoh: *${cmd} Nama Kamu | Nama Dia*` 
+                    }, { quoted: msg });
                 }
-                // Jadikan persen 1-100
-                const score = Math.abs(hash % 100) + 1;
 
-                let komentar = "";
-                if (score < 30) komentar = "Duh, mending cari yang lain deh... 💔";
-                else if (score < 70) komentar = "Boleh lah, tapi harus banyak sabar. 🤔";
-                else komentar = "Wah, jodoh dunia akhirat ini mah! 💍🥰";
+                const parts = raw.split("|");
+                const nama1 = parts[0].trim();
+                const nama2 = parts[1].trim();
 
-                const result = `💘 *KALKULATOR CINTA* 💘
+                if (!nama1 || !nama2) {
+                    return sock.sendMessage(from, { text: "Namanya jangan kosong Bang." }, { quoted: msg });
+                }
 
-❤️ *${nama1.trim()}*
-vs
-💙 *${nama2.trim()}*
+                // 1. Hitung Persentase Acak (0 - 100)
+                // Tips: Kalau mau hasil konsisten (nama sama = hasil sama), 
+                // kita bisa pakai algoritma hashing sederhana. Tapi Random lebih seru buat mainan.
+                const score = Math.floor(Math.random() * 101); 
+
+                // 2. Tentukan Kategori / Komentar (Ada 6 Tier)
+                let status = "";
+                let comment = "";
+
+                if (score <= 10) {
+                    status = "💀 Musuh Bebuyutan";
+                    comment = "Mending jauh-jauh deh, auranya negatif banget kalau bersatu.";
+                } else if (score <= 30) {
+                    status = "💔 Mustahil";
+                    comment = "Dahlah Bang, cari yang lain aja. Temboknya terlalu tinggi.";
+                } else if (score <= 50) {
+                    status = "🚧 Friendzone Keras";
+                    comment = "Cocoknya cuma jadi temen curhat doang, jangan baper.";
+                } else if (score <= 70) {
+                    status = "🤏 Lumayan Lah";
+                    comment = "Ada potensi, tapi harus usaha keras biar dapet hatinya.";
+                } else if (score <= 90) {
+                    status = "❤️ Pasangan Serasi";
+                    comment = "Wah ini sih udah cocok banget! Gas lamar.";
+                } else { // 91 - 100
+                    status = "💍 Jodoh Dunia Akhirat";
+                    comment = "Fix no debat! Kalian diciptakan untuk bersama selamanya.";
+                }
+
+                // 3. Susun Bar (Visual Grafik)
+                // Contoh: [████░░░░░░] 40%
+                const filled = Math.floor(score / 10);
+                const empty = 10 - filled;
+                const bar = "█".repeat(filled) + "░".repeat(empty);
+
+                // 4. Kirim Hasil
+                const hasil = 
+`💘 *KALKULATOR CINTA* 💘
+
+👩‍❤️‍👨 *Pasangan:* ${nama1} x ${nama2}
 
 📊 *Kecocokan:* ${score}%
-💡 *Catatan:* ${komentar}`;
+${bar}
 
-                await sock.sendMessage(from, { text: result }, { quoted: msg });
-                return;
+🏷️ *Status:* ${status}
+💬 *Kata Bot:* "${comment}"`;
+
+                // Kirim dengan gambar love (pakai thumb standar atau kosongin aja)
+                await sock.sendMessage(from, { text: hasil }, { quoted: msg });
             }
 
             // --- FITUR OCR (IMAGE TO TEXT) ---
@@ -9410,21 +9443,51 @@ Selesai Bang.`
 
             if (cmd === "!quote") {
                 const quotes = [
-                    "Hidup itu sederhana, kita yang membuatnya rumit. — Confucius",
+                    "Jangan takut gagal, takutlah untuk tidak mencoba.",
                     "Jangan berhenti ketika lelah. Berhenti ketika selesai.",
-                    "Kesempatan tidak datang dua kali, Bang.",
+                    "Hidup ini singkat, jangan habiskan waktumu untuk membenci.",
                     "Kegagalan adalah bumbu yang membuat keberhasilan terasa nikmat.",
-                    "Jadilah versi terbaik dari dirimu sendiri."
+                    "Jadilah versi terbaik dari dirimu sendiri.",
+                    "Belajarlah dari masa lalu, hiduplah untuk hari ini, dan bermimpilah untuk masa depan.",
+                    "Masa depan tidak ditentukan oleh keberuntungan, tetapi oleh kerja keras dan ketekunan.",
+                    "Jangan takut dengan masa depan. Ciptakanlah masa depan yang kamu inginkan.",
+                    "Hidup adalah seni menyeimbangkan antara menerima dan memperjuangkan.",
+                    "Waktu adalah guru terbaik, meski kadang memberi pelajaran dengan cara yang keras.",
+                    "Orang kuat bukan mereka yang tak pernah jatuh, tetapi mereka yang selalu bangkit.",
+                    "Hidup adalah perjalanan, bukan perlombaan.",
+                    "Keberanian sejati adalah tetap berdiri tegak meski dunia mencoba menjatuhkanmu.",
+                    "Sukses dimulai dari keberanian untuk mencoba.",
+                    "Jangan hanya menunggu kesempatan, ciptakanlah kesempatan.",
+                    "Orang sukses bukan mereka yang tak pernah gagal, tetapi mereka yang tak pernah menyerah.",
+                    "Tidak ada jalan pintas menuju sukses yang berkelas.",
+                    "Jangan turunkan standar hanya untuk diterima orang lain.",
+                    "Orang yang tepat akan melihatmu berharga bahkan di saat terburukmu.",
+                    "Cinta bukanlah tentang memiliki, tetapi tentang memberi ruang untuk tumbuh bersama."
                 ];
                 await sock.sendMessage(from, { text: quotes[Math.floor(Math.random() * quotes.length)] });
             }
 
             if (cmd === "!joke") {
                 const jokes = [
-                    "Kenapa server marah? Karena sering di-*request* tanpa izin.",
-                    "Ayam kalau ketawa jadi apa? Ayam ketawa ya tetap ayam, Bang.",
-                    "Kenapa programmer jarang mandi? Karena mereka takut *clean build*.",
-                    "Kenapa motor ngebul? Karena lagi merokok Bang."
+                    "Kenapa matahari tenggelam? Karena nggak bisa berenang",
+                    "Burung, burung apa yang suka nolak? Burung GakGak",
+                    "Sayuran apa yang dingin? Kembang Cold",
+                    "Gula, gula apa yang bukan gula? Gula Aren't",
+                    "Nama kota apa yang banyak bapak-bapaknya? PurwoDaddy",
+                    "Bakso apa yang nggak boleh dilihat? Bakso Aurat",
+                    "Hewan apa yang taat lalu lintas? Unta-makan keselamatan",
+                    "Ikan, ikan apa yang bisa terbang? Lelelawar",
+                    "Kenapa air mata warnanya bening? Kalau warna ijo namanya air matcha",
+                    "Susu, susu apa yang selalu telat? Susu keDelay",
+                    "Superhero yang selalu selamat di setiap keadaan? AkuAman",
+                    "Roti, roti apa yang suka nyuri? JamBread",
+                    "Kenapa ginjal ada dua? Karena kalau satu Ganjil",
+                    "Huruf apa yang paling kedinginan? B, karena berada di tengah-tengah AC",
+                    "Kera, kera apa yang diinjak nggak marah? Keramik",
+                    "Gajah, gajah apa yang baik? Gajahat",
+                    "Siapa pemain bola yang punya usaha pengobatan? David Bekam",
+                    "Bubur apa yang kecil tapi bisa digedein? Bubur Zoom-Zoom",
+                    "Hewan apa yang bersaudara? Katak Beradik"
                 ];
                 await sock.sendMessage(from, { text: jokes[Math.floor(Math.random() * jokes.length)] });
             }
@@ -9433,7 +9496,27 @@ Selesai Bang.`
                 const pantun = [
                     "Jalan-jalan ke kota Blitar,\nBeli roti sama keju.\nKalau Bang lagi bingung mikir,\nBangBot siap bantu selalu.",
                     "Ke pasar beli tomat,\nTidak lupa beli pepaya.\nBang jangan banyak curhat,\nNanti aku jatuh cinta.",
-                    "Burung merpati terbang melayang,\nHinggap sebentar di atas dahan.\nBang jangan banyak bimbang,\nMasalah pasti ada jalan."
+                    "Burung merpati terbang melayang,\nHinggap sebentar di atas dahan.\nBang jangan banyak bimbang,\nMasalah pasti ada jalan.",
+                    "Pergi ke pasar beli batik,\nWarnanya merah sungguh merekah.\nJadilah anak yang berbudi baik,\nAgar hidupmu penuh berkah.",
+                    "Sungguh enak makan ketupat,\nDimakan saat hari raya.\nPunya teman suka merapat,\nKalau ada maunya saja.",
+                    "Burung pipit terbang ke bukit,\nHinggap sebentar di pohon jati.\nBangun pagi janganlah sakit,\nTebarkan senyum sejukkan hati.",
+                    "Buah mangga buah kuini,\nJatuh satu ke dalam kali.\nJangan menyesal di hari nanti,\nGunakan waktu sebaik mungkin.",
+                    "Jalan-jalan ke kota Paris,\nLihat gedung berbaris-baris.\nWajahmu itu sangatlah manis,\nMembuat hatiku teriris-iris.",
+                    "Kalau tuan tajam pikiran,\nAmbil galah tolong jolokkan.\nKalau tuan bijak aturan,\nBinatang apa tanduk di hidung?",
+                    "Kapal berlayar di lautan biru,\nOmbak datang memecah sunyi.\nWalau punya teman yang baru,\nTeman lama jangan dibenci.",
+                    "Pohon kelapa tumbuh menjulang,\nDaunnya lebat tempat berteduh.\nIngat ibadah sebelum pulang,\nAgar hati tidak keruh.",
+                    "Berburu ke padang datar,\nDapat rusa belang kaki.\nBerguru kepalang ajar,\nBagai bunga kembang tak jadi.",
+                    "Kalau ada sumur di ladang,\nBoleh kita menumpang mandi.\nKalau ada umurku panjang,\nBoleh kita berjumpa lagi.",
+                    "Pergi ke toko beli paku,\nPaku dipukul kena jari.\nRajin-rajinlah membaca buku,\nAgar ilmu menerangi diri.",
+                    "Makan bakso pakai cuka,\nMinumnya es teh manis.\nSiapa yang tidak suka,\nLihat gadis berwajah manis.",
+                    "Ada kancil mencuri timun,\nDikejar sama Pak Tani.\nJangan sering duduk melamun,\nHidup ini harus berani.",
+                    "Minum jamu rasanya pahit,\nBeli di pasar Kota Tua.\nWalau dompet sedang sakit,\nAsal ada kamu aku bahagia.",
+                    "Anak ayam turun sepuluh,\nMati satu tinggal sembilan.\nTuntut ilmu bersungguh-sungguh,\nSupaya tidak ketinggalan.",
+                    "Beli baju warna biru,\nDipakai untuk pergi bertamu.\nKalau punya teman baru,\nJangan lupakan teman lamamu.",
+                    "Main layang di tanah lapang,\nBenang putus nyangkut di dahan.\nHati senang bukan kepalang,\nDapat rezeki dari Tuhan.",
+                    "Bunga mawar bunga melati,\nTumbuh subur di taman kota.\nHanya kamu di dalam hati,\nTempat aku menjalin cinta.",
+                    "Pagi-pagi minum kopi,\nDitemani pisang goreng.\nDunia ini terasa sepi,\nKalau wajahmu terlihat coreng.",
+                    "Jalan-jalan ke Bekasi,\nBeli odading lima ribu.\nJangan lupa makan nasi,\nSupaya kuat menahan rindu."
                 ];
                 await sock.sendMessage(from, { text: pantun[Math.floor(Math.random() * pantun.length)] });
             }
@@ -9557,7 +9640,12 @@ Khodam terdeteksi : *${picked}*`
                 const stories = [
                     "Suatu hari Bang berjalan di jalan sepi. Tiba-tiba BangBot muncul dan berkata: 'Bang, mau stiker apa hari ini?'",
                     "Di sebuah kota kecil, ada seorang pemuda yang selalu membantu orang. Suatu hari ia bertemu bot aneh bernama BangBot. Hidupnya berubah sejak itu.",
-                    "Bang sedang galau. Tiba-tiba angin berhembus pelan sambil membawa suara: 'Tenang Bang, semua akan baik-baik saja.'"
+                    "Bang sedang galau. Tiba-tiba angin berhembus pelan sambil membawa suara: 'Tenang Bang, semua akan baik-baik saja.'",
+                    "Dulu dia hanya seorang pemimpi yang sering diremehkan oleh dunia, namun berkat dukungan tulus dari pasangan yang selalu percaya padanya, kini dia berdiri di puncak kesuksesan sebagai bukti bahwa cinta adalah energi paling hebat untuk mengubah takdir.",
+                    "Membangun bisnis dari nol terasa sangat berat bagi mereka berdua, namun setiap kali rasa lelah datang mereka saling menggenggam tangan dan berjanji bahwa rumah impian mereka akan segera nyata sebagai buah dari kesabaran dan kerja keras yang tiada henti.",
+                    "Dia memutuskan untuk berhenti menangisi masa lalu dan mulai fokus memperbaiki diri demi masa depan yang lebih cerah, karena dia percaya bahwa seseorang yang tepat akan datang di saat dia sudah menjadi versi terbaik dari dirinya sendiri.",
+                    "Lautan luas memisahkan raga mereka selama bertahun-tahun demi mengejar pendidikan tinggi di negeri orang, namun jarak tersebut justru menjadi guru yang mengajarkan bahwa kesetiaan dan tekad yang kuat adalah kunci utama untuk meraih kebahagiaan sejati.",
+                    "Setiap tetes keringatnya saat bekerja lembur adalah surat cinta paling jujur untuk keluarganya, dia tidak banyak bicara namun tindakannya membuktikan bahwa tanggung jawab dan kasih sayang adalah pondasi utama dalam membangun masa depan yang kokoh."
                 ];
                 await sock.sendMessage(from, { text: stories[Math.floor(Math.random() * stories.length)] });
             }
