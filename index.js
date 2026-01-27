@@ -9417,7 +9417,6 @@ Selesai Bang.`
                     "Gergaji Mesin",
                     "Serigala Overthinking",
                     "Tumis Kangkung",
-                    "Nyi Blorong",
                     "Nyi Roro Kidul",
                     "Burung Hantu Begadang",
                     "Payung Robek",
