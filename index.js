@@ -2837,245 +2837,460 @@ async function startBot() {
                 }
             }
 
-        // =================================================
-        // MENU UTAMA (Admin Commands hanya muncul untuk admin grup)
-        // =================================================
-        if (cmd === "!menu") {
-            // Menu umum (selalu muncul)
-            let menuText =
-`ＢａｎｇＢｏｔ Ｍｅｎｕ
+// =================================================
+            // MENU SYSTEM (KATEGORI & ALL MENU)
+            // =================================================
+            
+            // 1. MENU UTAMA (Daftar Kategori)
+            if (cmd === "!menu" || cmd === "!help") {
+                const menuMsg = 
+`*BANGBOT DASHBOARD*
+_Halo ${pushname}, pilih menu di bawah ini:_
 
-══════════════
-𝙎𝙩𝙞𝙘𝙠𝙚𝙧
-══════════════
-• !𝘴 → 𝘴𝘵𝘪𝘬𝘦𝘳 𝘧𝘰𝘵𝘰
-• !𝘣𝘳𝘢𝘵 𝘵𝘦𝘬𝘴 → 𝘴𝘵𝘪𝘬𝘦𝘳 𝘣𝘳𝘢𝘵
-• !𝘣𝘳𝘢𝘵𝘷𝘪𝘥 𝘵𝘦𝘬𝘴 → 𝘴𝘵𝘪𝘬𝘦𝘳 𝘣𝘳𝘢𝘵 𝘢𝘯𝘪𝘮𝘢𝘴𝘪
-• !𝘵𝘰𝘴𝘵𝘪𝘤𝘬 → 𝘷𝘪𝘥𝘦𝘰 → 𝘴𝘵𝘪𝘬𝘦𝘳 𝘢𝘯𝘪𝘮𝘢𝘴𝘪
-• !𝘴𝘣𝘭𝘶𝘳 → 𝘴𝘵𝘪𝘬𝘦𝘳 𝘣𝘭𝘶𝘳 (𝘴𝘦𝘯𝘴𝘰𝘳)
-• !𝘴𝘨𝘳𝘢𝘺 → 𝘴𝘵𝘪𝘬𝘦𝘳 𝘩𝘪𝘵𝘢𝘮 𝘱𝘶𝘵𝘪𝘩
-• !𝘦𝘮𝘰𝘫𝘪𝘮𝘪𝘹 → 𝘎𝘢𝘣𝘶𝘯𝘨 𝘦𝘮𝘰𝘫𝘪
-• !𝘴𝘴𝘦𝘢𝘳𝘤𝘩 𝘬𝘶𝘦𝘳𝘪 → 𝘊𝘢𝘳𝘪 𝘴𝘵𝘪𝘬𝘦𝘳 𝘥𝘪 𝘎𝘰𝘰𝘨𝘭𝘦
-• !𝘨𝘦𝘵𝘴 → 𝘚𝘵𝘪𝘬𝘦𝘳 𝘮𝘦𝘮𝘦 𝘳𝘢𝘯𝘥𝘰𝘮
-══════════════
-𝙆𝙤𝙣𝙫𝙚𝙧𝙨𝙞 𝙈𝙚𝙙𝙞𝙖
-══════════════
-• !𝘵𝘰𝘨𝘪𝘧 → 𝘷𝘪𝘥𝘦𝘰 → 𝘎𝘐𝘍
-• !𝘤𝘰𝘮𝘱𝘳𝘦𝘴𝘴 → 𝘬𝘰𝘮𝘱𝘳𝘦𝘴 𝘧𝘰𝘵𝘰/𝘷𝘪𝘥𝘦𝘰
-• !𝘷𝘪𝘥𝘤𝘰𝘮𝘱𝘳𝘦𝘴𝘴 [𝘴𝘪𝘻𝘦] → 𝘒𝘦𝘤𝘪𝘭𝘬𝘢𝘯 𝘶𝘬𝘶𝘳𝘢𝘯 𝘷𝘪𝘥𝘦𝘰
-• !𝘵𝘰𝘮𝘱3 → 𝘝𝘪𝘥𝘦𝘰/𝘝𝘕 𝘬𝘦 𝘔𝘗3
-• !𝘵𝘰𝘷𝘯 → 𝘈𝘶𝘥𝘪𝘰 𝘬𝘦 𝘝𝘰𝘪𝘤𝘦 𝘕𝘰𝘵𝘦
-• !𝘵𝘰𝘶𝘳𝘭 → 𝘜𝘱𝘭𝘰𝘢𝘥 𝘮𝘦𝘥𝘪𝘢 𝘬𝘦 𝘓𝘪𝘯𝘬
-• !𝘵𝘰𝘪𝘮𝘨 → 𝘚𝘵𝘪𝘬𝘦𝘳 𝘬𝘦 𝘨𝘢𝘮𝘣𝘢𝘳
-• !𝘵𝘰𝘷𝘪𝘥 → 𝘚𝘵𝘪𝘬𝘦𝘳 𝘎𝘐𝘍 𝘬𝘦 𝘷𝘪𝘥𝘦𝘰
-• !𝘵𝘰𝘨𝘪𝘧 → 𝘝𝘪𝘥𝘦𝘰 𝘬𝘦 𝘎𝘐𝘍
-• !𝘩𝘦𝘪𝘤2𝘫𝘱𝘨 → 𝘜𝘣𝘢𝘩 𝘧𝘪𝘭𝘦 𝘏𝘌𝘐𝘊 (𝘪𝘗𝘩𝘰𝘯𝘦) 𝘫𝘢𝘥𝘪 𝘑𝘗𝘎
-• !𝘸𝘦𝘣𝘱2𝘫𝘱𝘨 → 𝘜𝘣𝘢𝘩 𝘴𝘵𝘪𝘬𝘦𝘳/𝘸𝘦𝘣𝘱 𝘫𝘢𝘥𝘪 𝘑𝘗𝘎
-• !𝘸𝘦𝘣𝘱2𝘱𝘯𝘨 → 𝘜𝘣𝘢𝘩 𝘴𝘵𝘪𝘬𝘦𝘳/𝘸𝘦𝘣𝘱 𝘫𝘢𝘥𝘪 𝘗𝘕𝘎
-• !𝘳𝘨𝘣2𝘤𝘮𝘺𝘬 → 𝘜𝘣𝘢𝘩 𝘸𝘢𝘳𝘯𝘢 𝘶𝘯𝘵𝘶𝘬 𝘗𝘳𝘪𝘯𝘵𝘪𝘯𝘨 (𝘒𝘪𝘳𝘪𝘮 𝘋𝘰𝘬𝘶𝘮𝘦𝘯)
-• !𝘤𝘮𝘺𝘬2𝘳𝘨𝘣 → 𝘗𝘦𝘳𝘣𝘢𝘪𝘬𝘪 𝘸𝘢𝘳𝘯𝘢 𝘨𝘢𝘮𝘣𝘢𝘳 𝘩𝘢𝘴𝘪𝘭 𝘴𝘤𝘢𝘯/𝘱𝘳𝘪𝘯𝘵
-══════════════
-𝙄𝙢𝙖𝙜𝙚 𝙏𝙤𝙤𝙡𝙨
-══════════════
-• !𝘳𝘦𝘮𝘰𝘷𝘦𝘣𝘨 → 𝘩𝘢𝘱𝘶𝘴 𝘣𝘢𝘤𝘬𝘨𝘳𝘰𝘶𝘯𝘥 𝘧𝘰𝘵𝘰
-• !𝘤𝘢𝘳𝘵𝘰𝘰𝘯 → 𝘦𝘧𝘦𝘬 𝘬𝘢𝘳𝘵𝘶𝘯 𝘰𝘧𝘧𝘭𝘪𝘯𝘦
-• !𝘳𝘦𝘴𝘵𝘰𝘳𝘦𝘧𝘢𝘤𝘦 → 𝘱𝘦𝘳𝘣𝘢𝘪𝘬𝘪 𝘸𝘢𝘫𝘢𝘩 𝘣𝘭𝘶𝘳
-• !𝘳𝘦𝘴𝘪𝘻𝘦 1000 → 𝘶𝘣𝘢𝘩 𝘭𝘦𝘣𝘢𝘳 𝘨𝘢𝘮𝘣𝘢𝘳 (𝘱𝘹)
-• !𝘩𝘥 → 𝘱𝘦𝘳𝘣𝘦𝘴𝘢𝘳 𝘳𝘦𝘴𝘰𝘭𝘶𝘴𝘪 𝘨𝘢𝘮𝘣𝘢𝘳 2𝘹
-• !𝘴𝘴𝘤𝘩𝘢𝘵 𝘵𝘦𝘬𝘴 / 𝘳𝘦𝘱𝘭𝘺 → 𝘧𝘢𝘬𝘦 𝘴𝘤𝘳𝘦𝘦𝘯𝘴𝘩𝘰𝘵 𝘤𝘩𝘢𝘵
-• !𝘪𝘲𝘤 → (𝘪𝘗𝘩𝘰𝘯𝘦 𝘘𝘶𝘰𝘵𝘦 𝘊𝘩𝘢𝘵)
-• !𝘮𝘦𝘮𝘦 𝘢𝘵𝘢𝘴|𝘣𝘢𝘸𝘢𝘩 (𝘳𝘦𝘱𝘭𝘺 𝘧𝘰𝘵𝘰) → 𝘮𝘦𝘮𝘦 𝘨𝘦𝘯𝘦𝘳𝘢𝘵𝘰𝘳
-• !𝘴𝘤𝘢𝘯 → 𝘜𝘣𝘢𝘩 𝘧𝘰𝘵𝘰 𝘫𝘢𝘥𝘪 𝘴𝘦𝘱𝘦𝘳𝘵𝘪 𝘩𝘢𝘴𝘪𝘭 𝘴𝘤𝘢𝘯𝘯𝘦𝘳
-══════════════
-𝘼𝙪𝙙𝙞𝙤 𝙏𝙤𝙤𝙡𝙨
-══════════════
-• !𝘣𝘢𝘴𝘴 → 𝘣𝘢𝘴𝘴 𝘣𝘰𝘰𝘴𝘵
-• !𝘯𝘪𝘨𝘩𝘵𝘤𝘰𝘳𝘦 → 𝘵𝘦𝘮𝘱𝘰 𝘤𝘦𝘱𝘢𝘵 & 𝘱𝘪𝘵𝘤𝘩 𝘵𝘪𝘯𝘨𝘨𝘪
-• !𝘴𝘭𝘰𝘸 → 𝘱𝘦𝘳𝘭𝘢𝘮𝘣𝘢𝘵 𝘵𝘦𝘮𝘱𝘰
-• !𝘷𝘤𝘩𝘪𝘱 → 𝘴𝘶𝘢𝘳𝘢 𝘤𝘦𝘮𝘱𝘳𝘦𝘯𝘨
-• !𝘷𝘯 → 𝘬𝘪𝘳𝘪𝘮 𝘴𝘦𝘣𝘢𝘨𝘢𝘪 𝘷𝘰𝘪𝘤𝘦 𝘯𝘰𝘵𝘦
-• !𝘷𝘰𝘤𝘢𝘭𝘳𝘦𝘮𝘰𝘷𝘦 → 𝘩𝘪𝘭𝘢𝘯𝘨𝘬𝘢𝘯 𝘷𝘰𝘬𝘢𝘭 (𝘬𝘢𝘳𝘢𝘰𝘬𝘦)
-• !𝘢𝘶𝘥𝘪𝘰𝘮𝘪𝘹 → 𝘨𝘢𝘣𝘶𝘯𝘨𝘬𝘢𝘯 2 𝘢𝘶𝘥𝘪𝘰
-• !𝘷𝘰𝘪𝘤𝘦2𝘵𝘦𝘹𝘵 (𝘙𝘦𝘱𝘭𝘺 𝘝𝘕) → 𝘔𝘦𝘯𝘨𝘶𝘣𝘢𝘩 𝘷𝘯 𝘮𝘦𝘯𝘫𝘢𝘥𝘪 𝘵𝘦𝘬𝘴
-• !𝘵𝘵𝘴 [𝘪𝘥/𝘦𝘯] → 𝘛𝘦𝘹𝘵 𝘵𝘰 𝘚𝘱𝘦𝘦𝘤𝘩
-• !𝘵𝘳𝘪𝘮 [𝘴𝘵𝘢𝘳𝘵] [𝘦𝘯𝘥]
-• !𝘧𝘢𝘥𝘦𝘪𝘯 𝘥𝘶𝘳𝘢𝘴𝘪
-• !𝘧𝘢𝘥𝘦𝘰𝘶𝘵 𝘥𝘶𝘳𝘢𝘴𝘪
-• !𝘢𝘶𝘥𝘪𝘰𝘤𝘰𝘯𝘷𝘦𝘳𝘵 [𝘮𝘱3/𝘸𝘢𝘷/𝘰𝘨𝘨] → 𝘜𝘣𝘢𝘩 𝘧𝘰𝘳𝘮𝘢𝘵 𝘧𝘪𝘭𝘦 𝘢𝘶𝘥𝘪𝘰/𝘝𝘕
-• !𝘵𝘰𝘮𝘱3
-• !𝘵𝘰𝘸𝘢𝘷
-• !𝘵𝘰𝘰𝘨𝘨
-• !𝘤𝘶𝘵 [𝘮𝘮:𝘴𝘴] [𝘮𝘮:𝘴𝘴] → 𝘗𝘰𝘵𝘰𝘯𝘨 𝘷𝘪𝘥𝘦𝘰 (𝘊𝘰𝘯𝘵𝘰𝘩: !𝘤𝘶𝘵 1:00 1:30)
-══════════════
-𝙑𝙞𝙙𝙚𝙤 𝙏𝙤𝙤𝙡𝙨
-══════════════
-• !𝘵𝘩𝘶𝘮𝘣𝘯𝘢𝘪𝘭 → 𝘈𝘮𝘣𝘪𝘭 𝘨𝘢𝘮𝘣𝘢𝘳 𝘤𝘰𝘷𝘦𝘳 𝘥𝘢𝘳𝘪 𝘷𝘪𝘥𝘦𝘰
-• !𝘴𝘩𝘰𝘳𝘵 [𝘥𝘦𝘵𝘪𝘬] → 𝘈𝘮𝘣𝘪𝘭 𝘱𝘰𝘵𝘰𝘯𝘨𝘢𝘯 𝘵𝘦𝘯𝘨𝘢𝘩 𝘷𝘪𝘥𝘦𝘰
-• !𝘴𝘩𝘰𝘳𝘵 𝘳𝘢𝘯𝘥𝘰𝘮 → 𝘈𝘮𝘣𝘪𝘭 𝘱𝘰𝘵𝘰𝘯𝘨𝘢𝘯 𝘢𝘤𝘢𝘬
-══════════════
-𝙊𝙛𝙛𝙞𝙘𝙚 & 𝙁𝙞𝙡𝙚 𝙏𝙤𝙤𝙡𝙨
-══════════════
-• !𝘰𝘧𝘧𝘪𝘤𝘦2𝘱𝘥𝘧 → 𝘋𝘖𝘊𝘟/𝘟𝘓𝘚𝘟/𝘗𝘗𝘛𝘟 𝘬𝘦 𝘗𝘋𝘍
-• !𝘱𝘥𝘧2𝘪𝘮𝘨 → 𝘗𝘋𝘍 𝘬𝘦 𝘨𝘢𝘮𝘣𝘢𝘳
-• !𝘤𝘰𝘮𝘱𝘳𝘦𝘴𝘴𝘱𝘥𝘧 → 𝘬𝘰𝘮𝘱𝘳𝘦𝘴 𝘗𝘋𝘍
-• !𝘱𝘥𝘧𝘮𝘦𝘳𝘨𝘦 → 𝘨𝘢𝘣𝘶𝘯𝘨 𝘣𝘦𝘣𝘦𝘳𝘢𝘱𝘢 𝘗𝘋𝘍
-• !𝘱𝘥𝘧𝘴𝘱𝘭𝘪𝘵 𝘩𝘢𝘭𝘢𝘮𝘢𝘯 → 𝘱𝘰𝘵𝘰𝘯𝘨 𝘩𝘢𝘭𝘢𝘮𝘢𝘯 𝘗𝘋𝘍
-• !𝘳𝘦𝘯𝘢𝘮𝘦 𝘯𝘢𝘮𝘢 𝘣𝘢𝘳𝘶 → 𝘎𝘢𝘯𝘵𝘪 𝘯𝘢𝘮𝘢 𝘧𝘪𝘭𝘦/𝘥𝘰𝘬𝘶𝘮𝘦𝘯
-• !𝘱𝘢𝘨𝘦𝘯𝘶𝘮 [𝘱𝘰𝘴𝘪𝘴𝘪] → 𝘉𝘦𝘳𝘪 𝘯𝘰𝘮𝘰𝘳 𝘩𝘢𝘭𝘢𝘮𝘢𝘯 𝘗𝘋𝘍 (𝘣𝘰𝘵𝘵𝘰𝘮/𝘵𝘰𝘱-𝘳𝘪𝘨𝘩𝘵)
-• !𝘤𝘭𝘦𝘢𝘯𝘢𝘮𝘦 → 𝘙𝘢𝘱𝘪𝘬𝘢𝘯 𝘯𝘢𝘮𝘢 𝘧𝘪𝘭𝘦 𝘰𝘵𝘰𝘮𝘢𝘵𝘪𝘴
-• !𝘱𝘥𝘧𝘮𝘦𝘵𝘢 → 𝘊𝘦𝘬 𝘪𝘯𝘧𝘰 𝘥𝘦𝘵𝘢𝘪𝘭/𝘮𝘦𝘵𝘢𝘥𝘢𝘵𝘢 𝘗𝘋𝘍
-• !𝘭𝘰𝘤𝘬𝘱𝘥𝘧 [𝘱𝘢𝘴𝘴] → 𝘒𝘶𝘯𝘤𝘪 𝘗𝘋𝘍 𝘥𝘦𝘯𝘨𝘢𝘯 𝘱𝘢𝘴𝘴𝘸𝘰𝘳𝘥
-• !𝘶𝘯𝘭𝘰𝘤𝘬𝘱𝘥𝘧 [𝘱𝘢𝘴𝘴] → 𝘏𝘢𝘱𝘶𝘴 𝘱𝘢𝘴𝘴𝘸𝘰𝘳𝘥 𝘥𝘢𝘳𝘪 𝘗𝘋𝘍
-• !𝘱𝘥𝘧𝘳𝘰𝘵𝘢𝘵𝘦 [90/180/𝘬𝘪𝘳𝘪] → 𝘗𝘶𝘵𝘢𝘳 𝘱𝘰𝘴𝘪𝘴𝘪 𝘩𝘢𝘭𝘢𝘮𝘢𝘯 𝘗𝘋𝘍
-• !𝘱𝘥𝘧𝘦𝘹𝘵𝘳𝘢𝘤𝘵 [𝘩𝘢𝘭] → 𝘈𝘮𝘣𝘪𝘭 𝘩𝘢𝘭𝘢𝘮𝘢𝘯 (𝘮𝘪𝘴𝘢𝘭: 1,5,9 𝘢𝘵𝘢𝘶 1-5)
-• !𝘱𝘥𝘧𝘥𝘦𝘭𝘦𝘵𝘦 [𝘩𝘢𝘭] → 𝘏𝘢𝘱𝘶𝘴 𝘩𝘢𝘭𝘢𝘮𝘢𝘯 𝘵𝘦𝘳𝘵𝘦𝘯𝘵𝘶 (𝘮𝘪𝘴𝘢𝘭: 2, 4-5)
-• !𝘪𝘮𝘨2𝘱𝘥𝘧 → 𝘜𝘣𝘢𝘩 𝘧𝘰𝘵𝘰 𝘫𝘢𝘥𝘪 𝘧𝘪𝘭𝘦 𝘗𝘋𝘍
-• !𝘱𝘥𝘧𝘧𝘰𝘯𝘵𝘴 → 𝘊𝘦𝘬 𝘥𝘢𝘧𝘵𝘢𝘳 𝘫𝘦𝘯𝘪𝘴 𝘧𝘰𝘯𝘵 𝘥𝘢𝘭𝘢𝘮 𝘗𝘋𝘍
-══════════════
-𝙁𝙞𝙣𝙖𝙣𝙘𝙚
-══════════════
-• !𝘬𝘶𝘳𝘴 → 𝘬𝘶𝘳𝘴 𝘉𝘐 (𝘐𝘋𝘙)
-• !𝘤𝘳𝘺𝘱𝘵𝘰 𝘣𝘵𝘤 → 𝘩𝘢𝘳𝘨𝘢 𝘤𝘳𝘺𝘱𝘵𝘰 𝘳𝘦𝘢𝘭𝘵𝘪𝘮𝘦
-══════════════
-𝘿𝙤𝙬𝙣𝙡𝙤𝙖𝙙𝙚𝙧
-══════════════
-• !𝘺𝘵 𝘶𝘳𝘭 → 𝘠𝘰𝘶𝘛𝘶𝘣𝘦 𝘷𝘪𝘥𝘦𝘰
-• !𝘺𝘵𝘢 𝘶𝘳𝘭 → 𝘠𝘰𝘶𝘛𝘶𝘣𝘦 𝘢𝘶𝘥𝘪𝘰
-• !𝘧𝘣 𝘶𝘳𝘭 → 𝘍𝘢𝘤𝘦𝘣𝘰𝘰𝘬
-• !𝘪𝘨 𝘶𝘳𝘭 → 𝘐𝘯𝘴𝘵𝘢𝘨𝘳𝘢𝘮
-• !𝘵𝘵 𝘶𝘳𝘭 → 𝘛𝘪𝘬𝘛𝘰𝘬
-• !𝘵𝘩 𝘶𝘳𝘭 → 𝘛𝘩𝘳𝘦𝘢𝘥𝘴
-• !𝘹 𝘶𝘳𝘭 → 𝘟/𝘛𝘸𝘪𝘵𝘵𝘦𝘳
-• !𝘱𝘪𝘯 𝘶𝘳𝘭 → 𝘗𝘪𝘯𝘵𝘦𝘳𝘦𝘴𝘵 𝘥𝘰𝘸𝘯𝘭𝘰𝘢𝘥𝘦𝘳
-══════════════
-𝙁𝙪𝙣 & 𝙂𝙖𝙢𝙚
-══════════════
-• *!afk* [alasan] → Mode Jangan Ganggu
-• !𝘬𝘩𝘰𝘥𝘢𝘮 𝘯𝘢𝘮𝘢 → 𝘤𝘦𝘬 𝘬𝘩𝘰𝘥𝘢𝘮
-• !𝘴𝘭𝘰𝘵 → 𝘮𝘦𝘴𝘪𝘯 𝘴𝘭𝘰𝘵
-• !𝘥𝘢𝘥𝘶 [𝘫𝘶𝘮𝘭𝘢𝘩] → 𝘭𝘦𝘮𝘱𝘢𝘳 𝘥𝘢𝘥𝘶
-• !𝘵𝘦𝘣𝘢𝘬𝘬𝘢𝘵𝘢 / !𝘵𝘦𝘣𝘢𝘬𝘨𝘢𝘮𝘣𝘢𝘳
-• !𝘤𝘢𝘬𝘭𝘰𝘯𝘵𝘰𝘯𝘨 / !𝘧𝘢𝘮𝘪𝘭𝘺100
-• !𝘲𝘶𝘰𝘵𝘦, !𝘫𝘰𝘬𝘦, !𝘱𝘢𝘯𝘵𝘶𝘯
-• !8𝘣𝘢𝘭𝘭, !𝘤𝘰𝘪𝘯, !𝘴𝘶𝘪𝘵
-• !𝘴𝘪𝘢𝘱𝘢 𝘵𝘦𝘬𝘴 → 𝘱𝘪𝘭𝘪𝘩 𝘮𝘦𝘮𝘣𝘦𝘳 𝘳𝘢𝘯𝘥𝘰𝘮
-• !𝘱𝘪𝘭𝘪𝘩 𝘰𝘱𝘴𝘪1 | 𝘰𝘱𝘴𝘪2
-• !𝘫𝘰𝘥𝘰𝘩 𝘯𝘢𝘮𝘢 & 𝘯𝘢𝘮𝘢 → 𝘊𝘦𝘬 𝘬𝘦𝘤𝘰𝘤𝘰𝘬𝘢𝘯 𝘤𝘪𝘯𝘵𝘢
-• !𝘥𝘰𝘮𝘱𝘦𝘵 → 𝘊𝘦𝘬 𝘴𝘢𝘭𝘥𝘰 𝘶𝘢𝘯𝘨
-• !𝘬𝘦𝘳𝘫𝘢 → 𝘒𝘦𝘳𝘫𝘢 𝘣𝘶𝘢𝘵 𝘤𝘢𝘳𝘪 𝘥𝘶𝘪𝘵
-• !𝘥𝘢𝘪𝘭𝘺 → 𝘒𝘭𝘢𝘪𝘮 𝘶𝘢𝘯𝘨 𝘩𝘢𝘳𝘪𝘢𝘯
-• !𝘵𝘳𝘢𝘯𝘴𝘧𝘦𝘳 @𝘵𝘢𝘨 [𝘫𝘮𝘭] → 𝘒𝘪𝘳𝘪𝘮 𝘶𝘢𝘯𝘨
-• !𝘵𝘰𝘱 → 𝘊𝘦𝘬 10 𝘰𝘳𝘢𝘯𝘨 𝘱𝘢𝘭𝘪𝘯𝘨 𝘬𝘢𝘺𝘢
-• !𝘴𝘭𝘰𝘵 [𝘫𝘮𝘭] → 𝘑𝘶𝘥𝘪 𝘴𝘭𝘰𝘵 (𝘈𝘸𝘢𝘴 𝘣𝘢𝘯𝘨𝘬𝘳𝘶𝘵!)
-• !𝘮𝘢𝘵𝘩 → 𝘒𝘶𝘪𝘴 𝘔𝘢𝘵𝘦𝘮𝘢𝘵𝘪𝘬𝘢
-• !𝘴𝘪𝘢𝘱𝘢𝘬𝘢𝘩𝘢𝘬𝘶 → 𝘛𝘦𝘣𝘢𝘬-𝘵𝘦𝘣𝘢𝘬𝘢𝘯 𝘭𝘰𝘨𝘪𝘬𝘢
-══════════════
-𝙏𝙚𝙠𝙨 & 𝙆𝙧𝙚𝙖𝙩𝙞𝙫𝙞𝙩𝙖𝙨
-══════════════
-• !𝘴𝘶𝘮𝘮𝘢𝘳𝘪𝘻𝘦 (𝘳𝘦𝘱𝘭𝘺 𝘵𝘦𝘬𝘴) → 𝘳𝘪𝘯𝘨𝘬𝘢𝘴 𝘵𝘦𝘬𝘴
-• !𝘱𝘢𝘳𝘢𝘧𝘳𝘢𝘴𝘦 (𝘳𝘦𝘱𝘭𝘺 𝘵𝘦𝘬𝘴) → 𝘶𝘣𝘢𝘩 𝘴𝘶𝘴𝘶𝘯𝘢𝘯 𝘬𝘢𝘭𝘪𝘮𝘢𝘵
-• !𝘵𝘵𝘴 [𝘪𝘥/𝘦𝘯] 𝘵𝘦𝘬𝘴 → 𝘵𝘦𝘹𝘵 𝘵𝘰 𝘴𝘱𝘦𝘦𝘤𝘩
-• !𝘴𝘵𝘰𝘳𝘺, !𝘬𝘢𝘵𝘢𝘣𝘪𝘫𝘢𝘬
-• !𝘱𝘶𝘫𝘪, !𝘳𝘰𝘢𝘴𝘵, !𝘤𝘪𝘯𝘵𝘢
-• !𝘳𝘦𝘷𝘦𝘳𝘴𝘦 𝘵𝘦𝘬𝘴
-══════════════
-𝘼𝙄 & 𝘾𝙝𝙖𝙩𝙗𝙤𝙩
-══════════════
-• !𝘢𝘪 𝘱𝘦𝘳𝘵𝘢𝘯𝘺𝘢𝘢𝘯 → 𝘛𝘢𝘯𝘺𝘢 𝘫𝘢𝘸𝘢𝘣 𝘤𝘦𝘳𝘥𝘢𝘴 (𝘊𝘩𝘢𝘵𝘎𝘗𝘛)
-• !𝘪𝘮𝘨 𝘵𝘦𝘬𝘴 → 𝘉𝘶𝘢𝘵 𝘨𝘢𝘮𝘣𝘢𝘳 𝘥𝘢𝘳𝘪 𝘵𝘦𝘬𝘴 (𝘈𝘐)
-══════════════
-𝙀𝙙𝙪𝙠𝙖𝙨𝙞 & 𝙐𝙩𝙞𝙡𝙞𝙩𝙖𝙨
-══════════════
-• !𝘬𝘣𝘣𝘪 [𝘬𝘢𝘵𝘢] → 𝘒𝘢𝘮𝘶𝘴 𝘉𝘦𝘴𝘢𝘳 𝘉.𝘐𝘯𝘥𝘰𝘯𝘦𝘴𝘪𝘢
-• !𝘵𝘳 [𝘬𝘰𝘥𝘦] [𝘵𝘦𝘬𝘴] → 𝘎𝘰𝘰𝘨𝘭𝘦 𝘛𝘳𝘢𝘯𝘴𝘭𝘢𝘵𝘦 (𝘪𝘥/𝘦𝘯/𝘫𝘢)
-• !𝘸𝘪𝘬𝘪 [𝘵𝘰𝘱𝘪𝘬] → 𝘊𝘢𝘳𝘪 𝘢𝘳𝘵𝘪𝘬𝘦𝘭 𝘞𝘪𝘬𝘪𝘱𝘦𝘥𝘪𝘢
-• !𝘩𝘪𝘵𝘶𝘯𝘨 [𝘢𝘯𝘨𝘬𝘢] → 𝘒𝘢𝘭𝘬𝘶𝘭𝘢𝘵𝘰𝘳 (𝘮𝘪𝘴𝘢𝘭: 105-2)
-• !𝘯𝘶𝘭𝘪𝘴 [𝘵𝘦𝘬𝘴] → 𝘜𝘣𝘢𝘩 𝘬𝘦𝘵𝘪𝘬𝘢𝘯 𝘫𝘢𝘥𝘪 𝘵𝘶𝘭𝘪𝘴𝘢𝘯 𝘵𝘢𝘯𝘨𝘢𝘯
-• !𝘤𝘰𝘯𝘷𝘦𝘳𝘵 [𝘯𝘪𝘭𝘢𝘪] 𝘵𝘰 [𝘴𝘢𝘵𝘶𝘢𝘯] → 𝘒𝘰𝘯𝘷𝘦𝘳𝘴𝘪 𝘴𝘢𝘵𝘶𝘢𝘯 𝘵𝘦𝘬𝘯𝘪𝘬 𝘭𝘦𝘯𝘨𝘬𝘢𝘱
-══════════════
-𝙍𝙚𝙡𝙞𝙜𝙞
-══════════════
-• !𝘴𝘩𝘰𝘭𝘢𝘵 [𝘬𝘰𝘵𝘢] → 𝘑𝘢𝘥𝘸𝘢𝘭 𝘴𝘩𝘰𝘭𝘢𝘵 𝘩𝘢𝘳𝘪 𝘪𝘯𝘪
-• !𝘲𝘶𝘳𝘢𝘯 [𝘴𝘶𝘳𝘢𝘩] → 𝘉𝘢𝘤𝘢 𝘢𝘺𝘢𝘵 𝘈𝘭-𝘘𝘶𝘳𝘢𝘯
-• !𝘬𝘪𝘴𝘢𝘩𝘯𝘢𝘣𝘪 [𝘯𝘢𝘮𝘢] → 𝘊𝘦𝘳𝘪𝘵𝘢 𝘕𝘢𝘣𝘪
-• !𝘥𝘰𝘢𝘩𝘢𝘳𝘪𝘢𝘯 → 𝘒𝘶𝘮𝘱𝘶𝘭𝘢𝘯 𝘥𝘰𝘢 𝘩𝘢𝘳𝘪𝘢𝘯
-══════════════
-𝘽𝙧𝙖𝙞𝙣𝙨𝙩𝙤𝙧𝙢𝙞𝙣𝙜
-══════════════
-• !𝘪𝘥𝘦 [𝘵𝘰𝘱𝘪𝘬] → 𝘊𝘢𝘳𝘪 𝘪𝘥𝘦 𝘭𝘪𝘢𝘳/𝘬𝘳𝘦𝘢𝘵𝘪𝘧
-• !𝘴𝘸𝘰𝘵 [𝘵𝘰𝘱𝘪𝘬] → 𝘈𝘯𝘢𝘭𝘪𝘴𝘪𝘴 𝘒𝘦𝘬𝘶𝘢𝘵𝘢𝘯 & 𝘒𝘦𝘭𝘦𝘮𝘢𝘩𝘢𝘯
-• !𝘸𝘩𝘺 [𝘮𝘢𝘴𝘢𝘭𝘢𝘩] → 𝘊𝘢𝘳𝘪 𝘢𝘬𝘢𝘳 𝘮𝘢𝘴𝘢𝘭𝘢𝘩 (5 𝘞𝘩𝘺𝘴)
-══════════════
-𝙀𝙢𝙚𝙧𝙜𝙚𝙣𝙘𝙮 𝙄𝙣𝙛𝙤
-══════════════
-• !𝘯𝘰𝘮𝘰𝘳 → 𝘋𝘢𝘧𝘵𝘢𝘳 𝘵𝘦𝘭𝘦𝘱𝘰𝘯 𝘥𝘢𝘳𝘶𝘳𝘢𝘵 𝘙𝘐
-• !𝘱3𝘬 [𝘵𝘰𝘱𝘪𝘬] → 𝘗𝘢𝘯𝘥𝘶𝘢𝘯 𝘗𝘦𝘳𝘵𝘰𝘭𝘰𝘯𝘨𝘢𝘯 𝘗𝘦𝘳𝘵𝘢𝘮𝘢
-• !𝘤𝘢𝘳𝘪𝘳𝘴 → 𝘊𝘢𝘳𝘪 𝘙𝘚 𝘵𝘦𝘳𝘥𝘦𝘬𝘢𝘵 (𝘙𝘦𝘱𝘭𝘺 𝘓𝘰𝘬𝘢𝘴𝘪)
-══════════════
-𝙏𝙤𝙤𝙡𝙨 & 𝙄𝙣𝙛𝙤
-══════════════
-• !𝘤𝘰𝘯𝘧𝘦𝘴𝘴 08123** | 𝘗𝘦𝘴𝘢𝘯 | 𝘗𝘦𝘯𝘨𝘪𝘳𝘪𝘮
-• !𝘭𝘪𝘳𝘪𝘬 [𝘫𝘶𝘥𝘶𝘭] → 𝘊𝘢𝘳𝘪 𝘭𝘪𝘳𝘪𝘬 𝘭𝘢𝘨𝘶 + 𝘤𝘰𝘷𝘦𝘳 𝘢𝘭𝘣𝘶𝘮
-• !𝘣𝘪𝘭𝘭 [𝘵𝘰𝘵𝘢𝘭] [𝘰𝘳𝘢𝘯𝘨/@𝘵𝘢𝘨] → 𝘏𝘪𝘵𝘶𝘯𝘨 𝘱𝘢𝘵𝘶𝘯𝘨𝘢𝘯 𝘰𝘵𝘰𝘮𝘢𝘵𝘪𝘴
-• !𝘲𝘳 𝘵𝘦𝘬𝘴 → 𝘘𝘙 𝘤𝘰𝘥𝘦
-• !𝘲𝘳𝘸𝘪𝘧𝘪 𝘴𝘴𝘪𝘥|𝘱𝘢𝘴𝘴|𝘛𝘪𝘱𝘦 → 𝘘𝘙 𝘞𝘪𝘍𝘪
-• !𝘣𝘢𝘳𝘤𝘰𝘥𝘦 𝘬𝘰𝘥𝘦 → 𝘣𝘢𝘳𝘤𝘰𝘥𝘦
-• !𝘲𝘳𝘷𝘤𝘢𝘳𝘥 𝘯𝘢𝘮𝘢|𝘵𝘦𝘭𝘱|𝘦𝘮𝘢𝘪𝘭 → 𝘘𝘙 𝘷𝘊𝘢𝘳𝘥
-• !𝘲𝘳𝘥𝘦𝘤𝘰𝘥𝘦 → 𝘣𝘢𝘤𝘢 𝘘𝘙 𝘥𝘢𝘳𝘪 𝘨𝘢𝘮𝘣𝘢𝘳
-• !𝘲𝘳𝘢𝘶𝘵𝘰 → 𝘴𝘤𝘢𝘯 𝘘𝘙 𝘵𝘦𝘳𝘢𝘬𝘩𝘪𝘳 𝘵𝘢𝘯𝘱𝘢 𝘳𝘦𝘱𝘭𝘺
-• !𝘲𝘳𝘧𝘶𝘭𝘭𝘴𝘤𝘢𝘯 → 𝘴𝘤𝘢𝘯 𝘣𝘢𝘯𝘺𝘢𝘬 𝘘𝘙 𝘴𝘦𝘬𝘢𝘭𝘪𝘨𝘶𝘴
-• !𝘰𝘤𝘳 → 𝘈𝘮𝘣𝘪𝘭 𝘵𝘦𝘬𝘴 𝘥𝘢𝘳𝘪 𝘨𝘢𝘮𝘣𝘢𝘳
-• !𝘱𝘪𝘯𝘨 𝘩𝘰𝘴𝘵 → 𝘤𝘦𝘬 𝘱𝘪𝘯𝘨
-• !𝘪𝘱𝘪𝘯𝘧𝘰 𝘪𝘱 / 𝘥𝘰𝘮𝘢𝘪𝘯 → 𝘪𝘯𝘧𝘰 𝘐𝘗
-• !𝘤𝘶𝘢𝘤𝘢 𝘯𝘢𝘮𝘢_𝘬𝘰𝘵𝘢 → 𝘪𝘯𝘧𝘰 𝘤𝘶𝘢𝘤𝘢
-• !𝘨𝘦𝘮𝘱𝘢 → 𝘐𝘯𝘧𝘰 𝘨𝘦𝘮𝘱𝘢 𝘵𝘦𝘳𝘬𝘪𝘯𝘪 𝘥𝘢𝘳𝘪 𝘉𝘔𝘒𝘎
-• !𝘵𝘳𝘦𝘯𝘥𝘪𝘯𝘨 → 𝘊𝘦𝘬 𝘢𝘱𝘢 𝘺𝘢𝘯𝘨 𝘭𝘢𝘨𝘪 𝘷𝘪𝘳𝘢𝘭 (𝘎𝘰𝘰𝘨𝘭𝘦 𝘛𝘳𝘦𝘯𝘥𝘴)
-• !𝘣𝘦𝘳𝘪𝘵𝘢 → 𝘉𝘢𝘤𝘢 𝘩𝘦𝘢𝘥𝘭𝘪𝘯𝘦 𝘣𝘦𝘳𝘪𝘵𝘢 𝘵𝘦𝘳𝘣𝘢𝘳𝘶
-• !𝘯𝘦𝘸𝘴 → 𝘣𝘦𝘳𝘪𝘵𝘢 𝘵𝘦𝘳𝘣𝘢𝘳𝘶 𝘊𝘕𝘕 𝘐𝘯𝘥𝘰𝘯𝘦𝘴𝘪𝘢
-• !𝘤𝘦𝘬𝘳𝘦𝘴𝘪 <𝘳𝘦𝘴𝘪> → 𝘭𝘢𝘤𝘢𝘬 𝘱𝘢𝘬𝘦𝘵 (𝘰𝘵𝘰𝘮𝘢𝘵𝘪𝘴)
-• !𝘴𝘴𝘸𝘦𝘣 𝘶𝘳𝘭 → 𝘴𝘤𝘳𝘦𝘦𝘯𝘴𝘩𝘰𝘵 𝘸𝘦𝘣𝘴𝘪𝘵𝘦
-• !𝘴𝘩𝘰𝘳𝘵 / !𝘶𝘯𝘴𝘩𝘰𝘳𝘵 𝘶𝘳𝘭 → 𝘭𝘪𝘯𝘬 𝘵𝘰𝘰𝘭
-• !𝘢𝘯𝘪𝘮𝘦 𝘫𝘶𝘥𝘶𝘭 → 𝘪𝘯𝘧𝘰 𝘢𝘯𝘪𝘮𝘦
-• !𝘮𝘰𝘷𝘪𝘦 𝘫𝘶𝘥𝘶𝘭 → 𝘪𝘯𝘧𝘰 𝘧𝘪𝘭𝘮
-• !𝘴𝘵𝘢𝘭𝘬𝘪𝘨 𝘶𝘴𝘦𝘳𝘯𝘢𝘮𝘦 → 𝘪𝘯𝘧𝘰 𝘱𝘳𝘰𝘧𝘪𝘭 𝘐𝘎
-• !𝘴𝘱𝘦𝘦𝘥𝘵𝘦𝘴𝘵 → 𝘴𝘱𝘦𝘦𝘥𝘵𝘦𝘴𝘵 𝘴𝘦𝘳𝘷𝘦𝘳 𝘣𝘰𝘵
-• !𝘴𝘺𝘴𝘪𝘯𝘧𝘰
-• !𝘴𝘵𝘢𝘵𝘶𝘴 / !𝘢𝘣𝘰𝘶𝘵
-• !𝘨𝘳𝘰𝘶𝘱𝘪𝘯𝘧𝘰, !𝘰𝘸𝘯𝘦𝘳
-• !𝘰𝘸𝘯𝘦𝘳 → 𝘬𝘰𝘯𝘵𝘢𝘬 𝘰𝘸𝘯𝘦𝘳`;
+*!menuutama*
+*!menustiker*
+*!menuconvert*
+*!menuimage*
+*!menuaudio*
+*!menuvideo*
+*!menufun*
+*!menudownload*
+*!menuoffice*
+*!menutools*
+*!menuinfo*
+*!menuai*
+*!menuedukasi*
+*!menureligi*
+*!menuemergency*
+*!menufinance*
+*!menudonate*
+*!allmenu*`;
 
-            // Kalau di grup dan pengirim adalah admin → tambahkan Admin Commands
-            if (isGroup) {
-                const isAdminSender = await isGroupAdmin(sock, from, sender);
-                if (isAdminSender) {
-                    menuText +=
-`
-══════════════
-𝘼𝙙𝙢𝙞𝙣 𝘾𝙤𝙢𝙢𝙖𝙣𝙙𝙨
-(𝙷𝚊𝚗𝚢𝚊 𝚝𝚎𝚛𝚕𝚒𝚑𝚊𝚝 𝚘𝚕𝚎𝚑 𝚊𝚍𝚖𝚒𝚗)
-══════════════
-• !𝘢𝘥𝘮𝘪𝘯𝘮𝘦𝘯𝘶 → 𝘥𝘢𝘧𝘵𝘢𝘳 𝘱𝘦𝘳𝘪𝘯𝘵𝘢𝘩 𝘢𝘥𝘮𝘪𝘯
-• !𝘵𝘢𝘨𝘢𝘭𝘭 / !𝘦𝘷𝘦𝘳𝘺𝘰𝘯𝘦 → 𝘮𝘦𝘯𝘵𝘪𝘰𝘯 𝘴𝘦𝘮𝘶𝘢 𝘮𝘦𝘮𝘣𝘦𝘳
-• !𝘬𝘪𝘤𝘬 @𝘶𝘴𝘦𝘳 → 𝘬𝘦𝘭𝘶𝘢𝘳𝘬𝘢𝘯 𝘮𝘦𝘮𝘣𝘦𝘳
-• !𝘱𝘳𝘰𝘮𝘰𝘵𝘦 @𝘶𝘴𝘦𝘳 → 𝘫𝘢𝘥𝘪𝘬𝘢𝘯 𝘢𝘥𝘮𝘪𝘯
-• !𝘥𝘦𝘮𝘰𝘵𝘦 @𝘶𝘴𝘦𝘳 → 𝘵𝘶𝘳𝘶𝘯𝘬𝘢𝘯 𝘫𝘢𝘥𝘪 𝘮𝘦𝘮𝘣𝘦𝘳 𝘣𝘪𝘢𝘴𝘢
-`;
-                }
+                // Kirim dengan gambar (opsional) atau teks biasa
+                await sock.sendMessage(from, { 
+                    text: menuMsg,
+                    contextInfo: { externalAdReply: { title: "BangBot", body: "WhatsApp Bot", mediaType: 1, renderLargerThumbnail: true } }
+                }, { quoted: msg });
             }
 
-            // Tambahkan footer umum
-            menuText +=
-`
-══════════════
-𝙎𝙪𝙥𝙥𝙤𝙧𝙩
-══════════════
-• !𝘴𝘢𝘸𝘦𝘳𝘪𝘢 → 𝘵𝘳𝘢𝘬𝘵𝘪𝘳 𝘉𝘢𝘯𝘨𝘉𝘰𝘵 (https://saweria.co/ozagns)
+            if (cmd === "!menuutama") {
+                const utamaMsg =
+`*MENU UTAMA*
 
-𝙶𝚞𝚗𝚊𝚔𝚊𝚗 𝚏𝚒𝚝𝚞𝚛 𝚜𝚎𝚙𝚎𝚛𝚕𝚞𝚗𝚢𝚊 𝚢𝚊 𝙱𝚊𝚗𝚐, 𝚓𝚊𝚗𝚐𝚊𝚗 𝚋𝚞𝚊𝚝 𝚜𝚙𝚊𝚖.`;
+• !s → stiker foto
+• !brat teks → stiker brat
+• !bratvid teks → stiker brat animasi
+• !tostick → video ke stiker animasi
+• !toimg → Stiker ke gambar
+• !tovid → Stiker GIF ke video
+• !emojimix → Gabung emoji
+• !togif → video → GIF
+• !confess 08123** | Pesan | Pengirim
+• !hd → perbesar resolusi gambar 2x
+• !removebg → hapus background foto`;
+                
+                await sock.sendMessage(from, { text: utamaMsg }, { quoted: msg });
+            }
 
-            await sock.sendMessage(from, { text: menuText });
-            return; // optional: biar setelah !menu tidak lanjut cek command lain
-        }
+            // 2. MENU STIKER
+            if (cmd === "!menustiker") {
+                const stikerMsg =
+`*STIKER*
+
+• !s → stiker foto
+• !brat teks → stiker brat
+• !bratvid teks → stiker brat animasi
+• !tostick → video ke stiker animasi
+• !toimg → Stiker ke gambar
+• !tovid → Stiker GIF ke video
+• !sblur → stiker blur (sensor)
+• !sgray → stiker hitam putih
+• !emojimix → Gabung emoji
+• !ssearch kueri → Cari stiker di Google
+• !gets → Stiker meme random`;
+                
+                await sock.sendMessage(from, { text: stikerMsg }, { quoted: msg });
+            }
+
+            // 3. MENU CONVERT
+            if (cmd === "!menuconvert") {
+                const convertMsg =
+`*CONVERT*
+• !togif → video → GIF
+• !tomp3 → Video/VN ke MP3
+• !tovn → Audio ke Voice Note
+• !voice2text (Reply VN) → Mengubah vn menjadi teks
+• !tomp3
+• !towav
+• !toogg
+• !tourl → Upload media ke Link
+• !togif → Video ke GIF
+• !heic2jpg → Ubah file HEIC (iPhone) jadi JPG
+• !webp2jpg → Ubah stiker/webp jadi JPG
+• !webp2png → Ubah stiker/webp jadi PNG
+• !rgb2cmyk → Ubah warna untuk Printing (Kirim Dokumen)
+• !cmyk2rgb → Perbaiki warna gambar hasil scan/print`;
+
+                await sock.sendMessage(from, { text: convertMsg }, { quoted: msg });
+            }
+
+            // 4. MENU image
+            if (cmd === "!menuimage") {
+                const imageMsg =
+`*IMAGE TOOLS*
+• !removebg → hapus background foto
+• !compress → kompres foto/video
+• !cartoon → efek kartun offline
+• !restoreface → perbaiki wajah blur
+• !resize 1000 → ubah lebar gambar (px)
+• !hd → perbesar resolusi gambar 2x
+• !sschat teks / reply → fake screenshot chat
+• !iqc → (iPhone Quote Chat)
+• !meme atas|bawah (reply foto) → meme generator
+• !scan → Ubah foto jadi seperti hasil scanner`;
+
+                await sock.sendMessage(from, { text: imageMsg }, { quoted: msg });
+            }
+
+            // 5. MENU TOOLS & LAINNYA
+            if (cmd === "!menuaudio") {
+                const audioMsg =
+`*AUDIO*
+• !bass → bass boost
+• !nightcore → tempo cepat & pitch tinggi
+• !slow → perlambat tempo
+• !vchip → suara cempreng
+• !vn → kirim sebagai voice note
+• !vocalremove → hilangkan vokal (karaoke)
+• !audiomix → gabungkan 2 audio
+• !voice2text (Reply VN) → Mengubah vn menjadi teks
+• !tts [id/en] → Text to Speech
+• !trim [start] [end]
+• !fadein durasi
+• !fadeout durasi
+• !audioconvert [mp3/wav/ogg] → Ubah format file audio/VN
+• !tomp3
+• !towav
+• !toogg`;
+
+                await sock.sendMessage(from, { text: audioMsg }, { quoted: msg });
+            }
+
+            // 6. ALL MENU (TAMPIL SEMUA)
+            if (cmd === "!menuvideo") {
+                const vidMsg =
+`*VIDEO*
+• !thumbnail → Ambil gambar cover dari video
+• !compress → kompres foto/video
+• !vidcompress [size] → Kecilkan ukuran video
+• !short [detik] → Ambil potongan tengah video
+• !short random → Ambil potongan acak
+• !cut [mm:ss] [mm:ss] → Potong video (Contoh: !cut 1:00 1:30)`;
+
+                await sock.sendMessage(from, { text: vidMsg }, { quoted: msg });
+            }
+
+            if (cmd === "!menuoffice") {
+                const officeMsg =
+`*OFFICE*
+• !office2pdf → DOCX/XLSX/PPTX ke PDF
+• !pdf2img → PDF ke gambar
+• !compresspdf → kompres PDF
+• !pdfmerge → gabung beberapa PDF
+• !pdfsplit halaman → potong halaman PDF
+• !rename nama baru → Ganti nama file/dokumen
+• !pagenum [posisi] → Beri nomor halaman PDF (bottom/top-right)
+• !cleaname → Rapikan nama file otomatis
+• !pdfmeta → Cek info detail/metadata PDF
+• !lockpdf [pass] → Kunci PDF dengan password
+• !unlockpdf [pass] → Hapus password dari PDF
+• !pdfrotate [90/180/kiri] → Putar posisi halaman PDF
+• !pdfextract [hal] → Ambil halaman (misal: 1,5,9 atau 1-5)
+• !pdfdelete [hal] → Hapus halaman tertentu (misal: 2, 4-5)
+• !img2pdf → Ubah foto jadi file PDF
+• !summarize (reply teks) → ringkas teks
+• !paraphrase (reply teks) → ubah susunan kalimat
+• !pdffonts → Cek daftar jenis font dalam PDF`;
+
+                await sock.sendMessage(from, { text: officeMsg }, { quoted: msg });
+            }
+
+            if (cmd === "!menudownload") {
+                const downMsg =
+`*DOWNLOADER*
+• !yt url → YouTube video
+• !yta url → YouTube audio
+• !fb url → Facebook
+• !ig url → Instagram
+• !tt url → TikTok
+• !th url → Threads
+• !x url → X/Twitter
+• !pin url → Pinterest`;
+
+                await sock.sendMessage(from, { text: downMsg }, { quoted: msg });
+            }
+
+            if (cmd === "!menufun") {
+                const funMsg =
+`*FUN*
+• !afk [alasan] → Mode Jangan Ganggu
+• !khodam nama → cek khodam
+• !slot → mesin slot
+• !dadu [jumlah] → lempar dadu
+• !tebakkata / !tebakgambar
+• !caklontong / !family100
+• !quote, !joke, !pantun
+• !8ball, !coin, !suit
+• !siapa teks → pilih member random
+• !pilih opsi1 | opsi2
+• !jodoh nama & nama → Cek kecocokan cinta
+• !dompet → Cek saldo uang
+• !kerja → Kerja buat cari duit
+• !daily → Klaim uang harian
+• !transfer @tag [jml] → Kirim uang
+• !top → Cek 10 orang paling kaya
+• !slot [jml] → Judi slot (Awas bangkrut!)
+• !math → Kuis Matematika
+• !siapakahaku → Tebak-tebakan logika
+• !reverse teks
+• !story, !katabijak
+• !puji, !roast, !cinta`;
+
+                await sock.sendMessage(from, { text: funMsg }, { quoted: msg });
+            }
+
+            if (cmd === "!menuai") {
+                const aiMsg =
+`*AI*
+• !ai pertanyaan → Tanya jawab cerdas (ChatGPT)
+• !img teks → Buat gambar dari teks (AI)`;
+
+                await sock.sendMessage(from, { text: aiMsg }, { quoted: msg });
+            }
+
+            if (cmd === "!menuedukasi") {
+                const eduMsg =
+`*EDUKASI*
+• !kbbi [kata] → Kamus Besar B. Indonesia
+• !tr [kode] [teks] → Google Translate (id/en/ja)
+• !wiki [topik] → Cari artikel Wikipedia
+• !hitung [angka] → Kalkulator (misal: 105-2)
+• !nulis [teks] → Ubah ketikan jadi tulisan tangan
+• !convert [nilai] to [satuan] → Konversi satuan teknik lengkap
+• !ide [topik] → Cari ide liar/kreatif
+• !swot [topik] → Analisis Kekuatan & Kelemahan
+• !why [masalah] → Cari akar masalah (5 Whys)`;
+
+                await sock.sendMessage(from, { text: eduMsg }, { quoted: msg });
+            }
+
+            if (cmd === "!menutools") {
+                const toolMsg =
+`*TOOLS*
+• !confess 08123** | Pesan | Pengirim
+• !lirik [judul] → Cari lirik lagu + cover album
+• !bill [total] [orang/@tag] → Hitung patungan otomatis
+• !qr teks → QR code
+• !qrwifi ssid|pass|Tipe → QR WiFi
+• !barcode kode → barcode
+• !qrvcard nama|telp|email → QR vCard
+• !qrdecode → baca QR dari gambar
+• !qrauto → scan QR terakhir tanpa reply
+• !qrfullscan → scan banyak QR sekaligus
+• !ocr → Ambil teks dari gambar
+• !cekresi <resi> → lacak paket (otomatis)
+• !ssweb url → screenshot website
+• !short / !unshort url → link tool
+• !stalkig username → info profil IG`;
+
+                await sock.sendMessage(from, { text: toolMsg }, { quoted: msg });
+            }
+
+            if (cmd === "!menureligi") {
+                const religMsg =
+`*RELIGI*
+• !sholat [kota] → Jadwal sholat hari ini
+• !quran [surah] → Baca ayat Al-Quran
+• !kisahnabi [nama] → Cerita Nabi
+• !doaharian → Kumpulan doa harian`;
+
+                await sock.sendMessage(from, { text: religMsg }, { quoted: msg });
+            }
+
+            if (cmd === "!menuemergency") {
+                const emerMsg =
+`*EMERGENCY*
+• !nomor → Daftar telepon darurat RI
+• !p3k [topik] → Panduan Pertololan Pertama
+• !carirs → Cari RS terdekat (Reply Lokasi)`;
+
+                await sock.sendMessage(from, { text: emerMsg }, { quoted: msg });
+            }
+
+            if (cmd === "!menuinfo") {
+                const infoMsg =
+`*INFO*
+• !speedtest → speedtest server bot
+• !sysinfo
+• !status / !about
+• !groupinfo, !owner
+• !owner → kontak owner
+• !ping host → cek ping
+• !ipinfo ip / domain → info IP
+• !cuaca nama_kota → info cuaca
+• !gempa → Info gempa terkini dari BMKG
+• !trending → Cek apa yang lagi viral (Google Trends)
+• !berita → Baca headline berita terbaru
+• !news → berita terbaru CNN Indonesia
+• !anime judul → info anime
+• !movie judul → info film`;
+
+                await sock.sendMessage(from, { text: infoMsg }, { quoted: msg });
+            }
+
+            if (cmd === "!menudonate") {
+                const donateMsg =
+`**DONATE
+• !saweria → traktir BangBot ([https://saweria.co/ozagns](https://saweria.co/ozagns))`;
+
+                await sock.sendMessage(from, { text: donateMsg }, { quoted: msg });
+            }
+
+            if (cmd === "!menufinance") {
+                const financeMsg =
+`*FINANCE*
+• !kurs → kurs BI (IDR)
+• !crypto btc → harga crypto realtime`;
+
+                await sock.sendMessage(from, { text: financeMsg }, { quoted: msg });
+            }
+
+            if (cmd === "!allmenu") {
+                const allMsg =
+`*BANGBOT MENU*
+
+
+*MENU STIKER*
+• !s → Buat stiker dari foto
+• !brat [teks] → Buat stiker gaya 'brat'
+• !bratvid [teks] → Buat stiker 'brat' animasi
+• !tostick → Ubah video menjadi stiker animasi
+• !sblur → Buat stiker efek blur/sensor
+• !sgray → Buat stiker hitam putih
+• !emojimix → Gabungkan dua emoji menjadi satu
+• !ssearch [kueri] → Cari stiker melalui Google
+• !gets → Ambil stiker meme secara acak
+
+
+*MEDIA & EDITING*
+• !hd → Perbesar resolusi gambar 2x (Upscale)
+• !removebg → Hapus latar belakang foto
+• !cartoon → Berikan efek kartun pada foto
+• !restoreface → Perbaiki wajah yang blur pada foto
+• !resize [lebar] → Ubah ukuran lebar gambar (pixel)
+• !scan → Ubah foto menjadi efek dokumen hasil scan
+• !sschat [teks] → Buat screenshot chat palsu (WA)
+• !iqc → Buat screenshot chat gaya iPhone (Quote Chat)
+• !meme [atas|bawah] → Buat meme dari foto yang direply
+
+
+*KONVERSI FILE*
+• !toimg → Ubah stiker menjadi gambar biasa
+• !tovid → Ubah stiker animasi/GIF menjadi video
+• !togif → Ubah video menjadi GIF
+• !tomp3 → Ubah video atau VN menjadi file audio MP3
+• !tovn → Ubah file audio menjadi Voice Note (VN)
+• !tourl → Upload file media ke link publik
+• !heic2jpg → Konversi foto iPhone (HEIC) ke JPG
+• !webp2jpg / !webp2png → Konversi stiker ke JPG/PNG
+• !rgb2cmyk / !cmyk2rgb → Penyesuaian warna untuk kebutuhan cetak
+• !compress → Kompres ukuran foto atau video
+• !vidcompress [size] → Kecilkan ukuran file video secara spesifik
+
+
+*AUDIO & MUSIK*
+• !vocalremove → Hilangkan suara vokal (buat karaoke)
+• !audiomix → Gabungkan dua file audio
+• !bass → Tambahkan efek Bass Boost
+• !nightcore → Ubah audio menjadi tempo cepat & pitch tinggi
+• !slow → Perlambat tempo audio
+• !vchip → Ubah suara menjadi cempreng
+• !voice2text → Ubah suara dari VN menjadi teks (Transkrip)
+• !tts [id/en] → Mengubah teks menjadi suara (Text to Speech)
+• !lirik [judul] → Cari lirik lagu beserta cover albumnya
+• !audioconvert [mp3/wav/ogg] → Ubah format file audio
+
+
+*OFFICE & PDF*
+• !office2pdf → Ubah DOCX/XLSX/PPTX menjadi PDF
+• !img2pdf → Ubah kumpulan foto menjadi satu file PDF
+• !pdf2img → Ubah halaman PDF menjadi gambar
+• !compresspdf → Kecilkan ukuran file PDF
+• !pdfmerge → Gabungkan beberapa file PDF
+• !pdfsplit [hal] → Potong halaman tertentu pada PDF
+• !pdfextract / !pdfdelete → Ambil atau hapus halaman spesifik
+• !pdfrotate → Putar posisi halaman PDF
+• !lockpdf / !unlockpdf → Pasang atau hapus password PDF
+• !pagenum → Beri nomor halaman pada PDF
+• !pdfmeta → Cek metadata/detail file PDF
+
+
+*DOWNLOADER*
+• !yt / !yta [url] → YouTube
+• !tt [url] → TikTok
+• !ig [url] → Instagram
+• !fb [url] → Facebook
+• !th [url] → Threads
+• !x [url] → X/Twitter
+• !pin [url] → Pinterest
+
+
+*AI & EDUKASI*
+• !ai [pertanyaan] → Tanya jawab cerdas dengan ChatGPT
+• !img [teks] → Generate gambar dari teks (AI)
+• !summarize → Ringkas teks yang panjang
+• !paraphrase → Ubah susunan kalimat (anti-plagiasi)
+• !kbbi [kata] → Cari arti kata resmi di Kamus Besar Bahasa Indonesia
+• !tr [kode] [teks] → Terjemahan bahasa (Contoh: !tr en halo)
+• !wiki [topik] → Cari informasi di Wikipedia
+• !hitung [angka] → Kalkulator otomatis
+• !nulis [teks] → Ubah ketikan menjadi tulisan tangan di kertas
+• !convert [nilai] → Konversi berbagai satuan teknik
+
+
+*HIBURAN & GAME*
+• !khodam [nama] → Cek khodam pelindungmu
+• !slot / !kerja / !daily → Game ekonomi (Cari uang & judi virtual)
+• !dompet / !transfer → Cek saldo & kirim uang virtual
+• !tebakkata / !tebakgambar → Kuis tebak-tebakan
+• !caklontong / !family100 → Game kuis populer
+• !math → Kuis matematika cepat
+• !jodoh [nama1|nama2] → Cek kecocokan cinta
+• !afk [alasan] → Aktifkan mode sedang tidak di tempat
+• !siapa [teks] → Pilih member grup secara acak
+
+
+*TOOLS & INFORMASI*
+• !cuaca [kota] → Info cuaca terkini
+• !gempa → Info gempa bumi terbaru dari BMKG
+• !trending / !news → Berita viral dan headline terbaru
+• !cekresi [resi] → Lacak posisi paket secara otomatis
+• !qr / !qrdecode → Buat atau baca kode QR
+• !ocr → Ambil teks dari sebuah gambar
+• !ssweb [url] → Screenshot tampilan website
+• !short [url] → Perpendek link panjang
+• !ipinfo [ip] → Cek informasi alamat IP/Domain
+• !sholat [kota] → Jadwal sholat hari ini
+
+
+*SUPPORT*
+• !saweria → Dukung pengembangan BangBot ([https://saweria.co/ozagns](https://saweria.co/ozagns))
+• !owner → Kontak langsung pemilik bot
+
+Gunakan fitur seperlunya ya Bang, jangan buat spam.`;
+
+                await sock.sendMessage(from, { text: allMsg }, { quoted: msg });
+            }
 
             // =================================================
             // SAWERIA / SUPPORT
@@ -3083,7 +3298,7 @@ async function startBot() {
             if (["!saweria", "!traktir", "!donate"].includes(cmd)) {
                 await sock.sendMessage(from, {
                     text:
-`𝙼𝚊𝚞 𝚝𝚛𝚊𝚔𝚝𝚒𝚛 𝚔𝚘𝚙𝚒 𝚋𝚞𝚊𝚝 𝙱𝚊𝚗𝚐𝙱𝚘𝚝 & 𝚍𝚎𝚟𝚎𝚕𝚘𝚙𝚎𝚛𝚗𝚢𝚊?
+`𝙼𝚊𝚞 𝚝𝚛𝚊𝚔𝚝𝚒𝚛 𝚔𝚘𝚙𝚒 𝚋𝚞𝚊𝚝 𝙱𝚊𝚗𝚐𝙱𝚘𝚝?
 
 𝚂𝚊𝚠𝚎𝚛𝚒𝚊:
 https://saweria.co/ozagns
@@ -3104,12 +3319,7 @@ https://saweria.co/ozagns
 Uptime     : ${uptimeText}
 Command    : ${totalCommands}x dijalankan sejak bot start
 
-Fitur utama:
-- Auto-stiker foto & video
-- Downloader (YT/FB/IG/TT/Threads)
-- TTS, QR, removebg, fun & game teks, dll.
-
-Traktir kopi BangBot:
+Traktir kopi BangBot?
 https://saweria.co/ozagns`
                 });
             }
