@@ -3499,18 +3499,24 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
             }
 
 // =================================================
-            // BRATVID (API ALTERNATIF) 🎞️
+            // BRATVID (API BARU) — FIX ERROR REPLY 🎞️
             // =================================================
             if (cmd === "!bratvid") {
                 const text = teks.replace(/!bratvid/i, "").trim();
 
-                if (!text) return reply("Teksnya mana Bang?");
+                if (!text) {
+                    await sock.sendMessage(from, { text: "Teksnya mana Bang?" }, { quoted: msg });
+                    return;
+                }
                 
                 const words = text.split(/\s+/);
-                if (words.length > 30) return reply("Maksimal 30 kata aja Bang.");
+                if (words.length > 30) {
+                    await sock.sendMessage(from, { text: "Maksimal 30 kata aja Bang biar gak berat." }, { quoted: msg });
+                    return;
+                }
 
                 await sock.sendMessage(from, { react: { text: "⏳", key: msg.key } });
-                await reply("⏳ Otw bikin animasi (Server Baru)...");
+                await sock.sendMessage(from, { text: "⏳ Otw bikin animasi..." }, { quoted: msg });
 
                 try {
                     const id = Date.now();
@@ -3528,19 +3534,21 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                             fs.writeFileSync(frameFile, data);
                             framePaths.push(frameFile);
                         } catch (err) {
-                            // Kalau frame gagal 1, skip aja jangan bikin bot mati
                             console.log(`Frame ${i} gagal: ${err.message}`);
                         }
                         
-                        // Jeda aman biar gak kena banned IP
+                        // Jeda aman
                         await new Promise(r => setTimeout(r, 500)); 
                     }
 
-                    if (framePaths.length === 0) return reply("Gagal download frame dari server.");
+                    if (framePaths.length === 0) {
+                        await sock.sendMessage(from, { text: "Gagal download frame dari server." }, { quoted: msg });
+                        return;
+                    }
 
                     const output = `./bratvid_${id}.webp`;
                     
-                    // Ulangi frame terakhir 10x
+                    // Ulangi frame terakhir 10x biar kebaca
                     const lastFrame = framePaths[framePaths.length - 1];
                     for (let k = 0; k < 10; k++) framePaths.push(lastFrame);
 
@@ -3564,7 +3572,7 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
 
                 } catch (e) {
                     console.error("BratVid Error:", e);
-                    reply("Gagal bikin animasi. Server lagi lelah.");
+                    await sock.sendMessage(from, { text: "Gagal bikin animasi. Server lagi lelah." }, { quoted: msg });
                 }
             }
 
