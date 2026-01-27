@@ -3461,6 +3461,71 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
             }
 
 // =================================================
+            // FITUR CONFESS / MENFESS (BISA PAKAI NAMA / ANONIM)
+            // =================================================
+            if (cmd === "!confess" || cmd === "!menfess" || cmd === "!surat") {
+                const raw = teks.replace(cmd, "").trim();
+                const parts = raw.split("|");
+
+                // Cek minimal harus ada Nomor dan Pesan
+                if (parts.length < 2) {
+                    return sock.sendMessage(from, { 
+                        text: `⚠️ Format salah Bang.\n\n*Format Pakai Nama:*\n${cmd} 0812xxx | Isinya | Nama Kamu\n\n*Format Anonim (Rahasia):*\n${cmd} 0812xxx | Isinya` 
+                    }, { quoted: msg });
+                }
+
+                let targetNum = parts[0].trim();
+                const pesan = parts[1].trim();
+                
+                // LOGIKA NAMA PENGIRIM:
+                // Cek apakah ada bagian ke-3? Kalau ada dan gak kosong, pakai itu.
+                // Kalau gak ada, set jadi "Rahasia".
+                let pengirim = parts[2] ? parts[2].trim() : "Rahasia";
+                if (pengirim === "") pengirim = "Rahasia"; 
+
+                if (!targetNum || !pesan) {
+                    return sock.sendMessage(from, { text: "Nomor atau pesannya jangan kosong Bang." }, { quoted: msg });
+                }
+
+                // --- PROSES NOMOR ---
+                targetNum = targetNum.replace(/[^0-9]/g, '');
+                if (targetNum.startsWith('08')) {
+                    targetNum = '62' + targetNum.slice(1);
+                }
+                const targetJid = targetNum + '@s.whatsapp.net';
+
+                try {
+                    // Cek nomor valid di WA (Biar gak nyasar)
+                    const [result] = await sock.onWhatsApp(targetJid);
+                    if (!result || !result.exists) {
+                        return sock.sendMessage(from, { text: "❌ Nomor tujuan tidak terdaftar di WhatsApp." }, { quoted: msg });
+                    }
+
+                    // --- SUSUN PESAN ---
+                    const confessMsg = 
+`*ADA YANG CONFESS NIH*
+Dari: *${pengirim}*
+-------------------------------------
+"${pesan}"
+-------------------------------------
+_Pesan ini dikirim secara anonim._`;
+
+                    // Kirim ke Target
+                    await sock.sendMessage(targetJid, { text: confessMsg });
+
+                    // Lapor ke Pengirim Asli
+                    await sock.sendMessage(from, { 
+                        text: `✅ Sukses! Pesan terkirim ke *${targetNum}*.\n👤 Sebagai: *${pengirim}*` 
+                    }, { quoted: msg });
+
+                } catch (err) {
+                    console.error("Confess Error:", err);
+                    await sock.sendMessage(from, { text: "Gagal kirim. Pastikan nomornya benar." }, { quoted: msg });
+                }
+                return;
+            }
+
+// =================================================
             // BRAT (MULTI-SERVER) — CARI YANG RAPI 🎨
             // =================================================
             if (cmd === "!brat") {
