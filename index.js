@@ -3460,7 +3460,7 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
             }
 
 // =================================================
-            // BRAT (API VERSION) — SUPPORT EMOJI 😝
+            // BRAT (API ALTERNATIF) — RYZENDESU 🛡️
             // =================================================
             if (cmd === "!brat") {
                 const text = teks.replace(/!brat/i, "").trim();
@@ -3471,89 +3471,81 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                 }
 
                 try {
-                    // Kasih reaksi biar tau bot lagi kerja
                     await sock.sendMessage(from, { react: { text: "⏳", key: msg.key } });
 
-                    // Gunakan API Caliph (Gratis & Support Emoji)
-                    // encodeURIComponent wajib biar emoji/spasi gak bikin link error
-                    const url = `https://brat.caliph.dev/api/brat?text=${encodeURIComponent(text)}`;
+                    // GANTI API KE RYZENDESU (Lebih Stabil)
+                    const url = `https://api.ryzendesu.vip/api/maker/brat?text=${encodeURIComponent(text)}`;
                     
-                    // Download hasil gambar dari API
+                    // Download buffer
                     const { data } = await axios.get(url, { responseType: 'arraybuffer' });
 
-                    // Langsung jadiin stiker
+                    // Kirim stiker
                     await sendStickerWithMeta(sock, from, data, {
                         packname: "BangBot",
                         author: "Brat Generator"
                     });
 
                 } catch (e) {
-                    console.error("Brat API Error:", e);
-                    await sock.sendMessage(from, { text: "Gagal membuat stiker (Server API Sibuk)." }, { quoted: msg });
+                    console.error("Brat Error:", e);
+                    // Fallback kalau Ryzendesu mati juga, coba API lain (Siputzx)
+                    try {
+                        const urlBackup = `https://api.siputzx.my.id/api/m/brat?text=${encodeURIComponent(text)}`;
+                        const { data } = await axios.get(urlBackup, { responseType: 'arraybuffer' });
+                        await sendStickerWithMeta(sock, from, data, { packname: "BangBot", author: "Brat Backup" });
+                    } catch (err2) {
+                         await sock.sendMessage(from, { text: "⚠️ Semua server Brat lagi down Bang. Coba nanti lagi." }, { quoted: msg });
+                    }
                 }
-                return;
             }
 
 // =================================================
-            // BRATVID (API VERSION) — SUPPORT EMOJI 🎞️
+            // BRATVID (API ALTERNATIF) 🎞️
             // =================================================
             if (cmd === "!bratvid") {
                 const text = teks.replace(/!bratvid/i, "").trim();
 
-                if (!text) {
-                    await sock.sendMessage(from, { text: "Teksnya mana Bang?" }, { quoted: msg });
-                    return;
-                }
-
-                // Batasi panjang teks biar gak spamming API
+                if (!text) return reply("Teksnya mana Bang?");
+                
                 const words = text.split(/\s+/);
-                if (words.length > 30) {
-                    await sock.sendMessage(from, { text: "Kepanjangan Bang! Maksimal 30 kata aja ya." }, { quoted: msg });
-                    return;
-                }
+                if (words.length > 30) return reply("Maksimal 30 kata aja Bang.");
 
                 await sock.sendMessage(from, { react: { text: "⏳", key: msg.key } });
-                await sock.sendMessage(from, { text: "⏳ Otw request ke server brat..." }, { quoted: msg });
+                await reply("⏳ Otw bikin animasi (Server Baru)...");
 
                 try {
-                    // Pakai Random ID biar file gak tabrakan
                     const id = Date.now();
                     const framePaths = [];
                     
-                    // --- STEP 1: DOWNLOAD FRAME DARI API ---
                     for (let i = 0; i < words.length; i++) {
-                        // Gabungkan kata secara bertahap
-                        // Contoh: "Aku", "Aku Sayang", "Aku Sayang Kamu"
                         const currentText = words.slice(0, i + 1).join(" ");
                         
-                        const url = `https://brat.caliph.dev/api/brat?text=${encodeURIComponent(currentText)}`;
+                        // PAKAI API BARU (RYZENDESU)
+                        const url = `https://api.ryzendesu.vip/api/maker/brat?text=${encodeURIComponent(currentText)}`;
                         
-                        // Download buffer gambar
-                        const { data } = await axios.get(url, { responseType: 'arraybuffer' });
+                        try {
+                            const { data } = await axios.get(url, { responseType: 'arraybuffer' });
+                            const frameFile = `./bratframe_${id}_${i}.png`;
+                            fs.writeFileSync(frameFile, data);
+                            framePaths.push(frameFile);
+                        } catch (err) {
+                            // Kalau frame gagal 1, skip aja jangan bikin bot mati
+                            console.log(`Frame ${i} gagal: ${err.message}`);
+                        }
                         
-                        const frameFile = `./bratframe_${id}_${i}.png`;
-                        fs.writeFileSync(frameFile, data);
-                        framePaths.push(frameFile);
-                        
-                        // Kasih jeda dikit biar API gak marah (Anti-Banned)
-                        await new Promise(r => setTimeout(r, 200)); 
+                        // Jeda aman biar gak kena banned IP
+                        await new Promise(r => setTimeout(r, 500)); 
                     }
 
-                    // --- STEP 2: GABUNG JADI ANIMASI ---
+                    if (framePaths.length === 0) return reply("Gagal download frame dari server.");
+
                     const output = `./bratvid_${id}.webp`;
                     
-                    // Ulangi frame terakhir biar user sempat baca (Hold 10 frame)
+                    // Ulangi frame terakhir 10x
                     const lastFrame = framePaths[framePaths.length - 1];
-                    for (let k = 0; k < 10; k++) {
-                        framePaths.push(lastFrame);
-                    }
+                    for (let k = 0; k < 10; k++) framePaths.push(lastFrame);
 
-                    // Command ImageMagick buat bikin animasi
-                    // -delay 15 = kecepatan animasi (makin kecil makin ngebut)
-                    // -loop 0 = gerak terus gak berhenti
                     const fileListStr = framePaths.join(" ");
                     
-                    // Kita pakai execAsync biar rapi (pastikan fungsi ini ada, kalau gak ada pake exec biasa)
                     await new Promise((resolve, reject) => {
                         exec(`magick ${fileListStr} -loop 0 -delay 15 "${output}"`, (err) => {
                             if (err) reject(err);
@@ -3561,23 +3553,18 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                         });
                     });
 
-                    // --- STEP 3: KIRIM & BERSIH-BERSIH ---
                     const st = fs.readFileSync(output);
-                    
                     await sendStickerWithMeta(sock, from, st, {
                         packname: "BangBot",
                         author: "Brat Animation"
                     });
 
-                    // Hapus file sampah
-                    [...new Set(framePaths)].forEach(f => { 
-                        if (fs.existsSync(f)) fs.unlinkSync(f); 
-                    });
+                    [...new Set(framePaths)].forEach(f => { if (fs.existsSync(f)) fs.unlinkSync(f); });
                     if (fs.existsSync(output)) fs.unlinkSync(output);
 
                 } catch (e) {
-                    console.error("BratVid API Error:", e);
-                    await sock.sendMessage(from, { text: "Gagal bikin animasi (Server API Timeout/Error)." }, { quoted: msg });
+                    console.error("BratVid Error:", e);
+                    reply("Gagal bikin animasi. Server lagi lelah.");
                 }
             }
 
