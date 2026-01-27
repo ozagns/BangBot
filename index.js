@@ -2866,17 +2866,12 @@ _Halo ${pushname}, pilih menu di bawah ini:_
 *!menudonate*
 *!allmenu*`;
 
-                // Kirim dengan gambar (opsional) atau teks biasa
-                await sock.sendMessage(from, { 
-                    text: menuMsg,
-                    contextInfo: { externalAdReply: { title: "BangBot", body: "WhatsApp Bot", mediaType: 1, renderLargerThumbnail: true } }
-                }, { quoted: msg });
+                await sock.sendMessage(from, { text: menuMsg }, { quoted: msg });
             }
 
             if (cmd === "!menuutama") {
                 const utamaMsg =
 `*MENU UTAMA*
-
 • !s → stiker foto
 • !brat teks → stiker brat
 • !bratvid teks → stiker brat animasi
@@ -2896,7 +2891,6 @@ _Halo ${pushname}, pilih menu di bawah ini:_
             if (cmd === "!menustiker") {
                 const stikerMsg =
 `*STIKER*
-
 • !s → stiker foto
 • !brat teks → stiker brat
 • !bratvid teks → stiker brat animasi
