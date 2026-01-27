@@ -2594,7 +2594,8 @@ async function startBot() {
                 if (action === 'add') {
                     await sock.sendMessage(id, { 
                         image: { url: ppuser }, 
-                        caption: `Halo @${username} 👋\nSelamat datang! Jangan lupa baca deskripsi grup ya.`, 
+                        caption: `Halo @${username} 👋\nSelamat datang!
+!menu untuk lihat fitur bot.`, 
                         mentions: [num] 
                     });
                 } 
@@ -3481,14 +3482,14 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
 
                 const cmdMagick =
                     `magick -background white -fill black ` +
-                    `-font "${IPHONE_FONT_PATH}" -pointsize 120 ` +
-                    `-gravity northwest ` +
-                    `-interword-spacing 10 -interline-spacing 15 ` +
-                    `caption:@${txtFile} ` +
-                    `-bordercolor white -border 50x50 ` +
-                    `-resize 512x512^ ` +
-                    `-gravity center -extent 512x512 ` +
-                    `-blur 0x2.5 "${out}"`;
+                    `-font "${IPHONE_FONT_PATH}" ` + 
+                    `-size 400x400 ` + // 1. Batasi area teks biar ada margin
+                    `-gravity center ` + // 2. Teks di tengah
+                    `caption:@${txtFile} ` + // 3. caption: otomatis atur ukuran font biar muat
+                    `-bordercolor white -border 56x56 ` + // 4. Tambah border putih
+                    `-resize 512x512 ` + // 5. Resize pas (bukan crop)
+                    `-gravity center -extent 512x512 ` + // 6. Pastikan kanvas akhir kotak sempurna
+                    `-blur 0x3 "${out}"`; // Blur dikit biar estetik brat
 
                 exec(cmdMagick, async (err) => {
                     if (err) {
