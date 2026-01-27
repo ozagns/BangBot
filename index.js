@@ -4514,12 +4514,12 @@ _Semoga berkah ibadahnya Bang!_`;
 
                 const result = `💘 *KALKULATOR CINTA* 💘
 
-            ❤️ *${nama1.trim()}*
-                vs
-            💙 *${nama2.trim()}*
+❤️ *${nama1.trim()}*
+vs
+💙 *${nama2.trim()}*
 
-            📊 *Kecocokan:* ${score}%
-            💡 *Catatan:* ${komentar}`;
+📊 *Kecocokan:* ${score}%
+💡 *Catatan:* ${komentar}`;
 
                 await sock.sendMessage(from, { text: result }, { quoted: msg });
                 return;
@@ -9406,26 +9406,36 @@ Selesai Bang.`
 
                 // Daftar khodam random hiburan
                 const khodams = [
-                    "Macan Putih Mager",
-                    "Kelinci Speedrun",
-                    "Naga Wifi Lemot",
-                    "Harimau Santuy",
-                    "Elang Paket Malam",
-                    "Monyet Debugger",
-                    "Buaya Toboliar",
-                    "Kuda Pegasus Kentang",
-                    "Jin Typo Compiler",
+                    "Buaya Sunda",
+                    "Macan Birahi",
+                    "Tutup Panci",
+                    "Kaleng Khong Guan",
+                    "Tutup Odol",
+                    "Beruang Sunda",
+                    "Kanebo Kering",
+                    "Kapal Karam",
+                    "Gergaji Mesin",
                     "Serigala Overthinking",
-                    "Panda Tukang Tidur",
-                    "Gajah Penyimpan Chat",
-                    "Kucing AFK Sejati",
+                    "Tumis Kangkung",
+                    "Nyi Blorong",
+                    "Nyi Roro Kidul",
                     "Burung Hantu Begadang",
-                    "Kuntilanak Tukang Stiker",
-                    "Genderuwo Pengamat Grup",
-                    "Siluman Paket Data",
-                    "Kuyang Tukang Scroll",
-                    "Nyi Roro Laper Mulu",
-                    "Lele Penjaga Wifi Warung"
+                    "Payung Robek",
+                    "Ayam Sayur",
+                    "Tali Jemuran",
+                    "Tuyul Kesandung",
+                    "LC Karaoke",
+                    "Cupang Betina",
+                    "Sundel Bolong",
+                    "Suster Ngesot",
+                    "Martabak Telor",
+                    "Sandal Swallow",
+                    "Pensil Inul",
+                    "Harimau Pink",
+                    "Siluman Oyo",
+                    "Tuyul Mager",
+                    "Kunti Bogel",
+                    "Kuntilanak Moshing"
                 ];
 
                 // Random pick
