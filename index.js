@@ -192,6 +192,10 @@ const QrCodeReader = require('qrcode-reader');
 // --- MAP PENYIMPAN SESI BALASAN ---
 const activeConfess = {};
 
+// --- DATABASE PESAN SEMENTARA (ANTI-DELETE) ---
+const msgLog = {}; // Tempat nyimpen riwayat chat
+const NOMOR_OWNER = "6289681914183@s.whatsapp.net"; // Ganti No WA Abang (pake @s.whatsapp.net)
+
 // =========================================================
 // PDF MERGE QUEUE (per chat)
 // =========================================================
@@ -2625,6 +2629,60 @@ async function startBot() {
         // JANGAN PROSES PESAN DARI BOT SENDIRI
         if (msg.key.fromMe) return;
 
+        // --- 1. SIMPAN PESAN MASUK KE MEMORI ---
+        // Kita simpan ID pesan dan isinya, biar kalau dihapus kita punya backup.
+        const msgId = msg.key.id;
+        
+        // Cek: Kalau BUKAN pesan tipe hapus/protocol, simpan ke log
+        if (!msg.message.protocolMessage) {
+            msgLog[msgId] = msg;
+            
+            // Opsional: Batasi memori biar server gak berat (Hapus pesan lama banget)
+            // setTimeout(() => { delete msgLog[msgId] }, 600000); // Hapus stlh 10 menit (opsional)
+        }
+
+        // --- 2. DETEKSI PESAN DIHAPUS (REVOKE) ---
+        if (msg.message.protocolMessage && msg.message.protocolMessage.type === 0) {
+            const keyToDelete = msg.message.protocolMessage.key.id;
+            const chatYangDihapus = msgLog[keyToDelete]; // Cari di memori
+
+            if (chatYangDihapus) {
+                try {
+                    // Ambil info siapa pelakunya
+                    const participant = chatYangDihapus.key.participant || chatYangDihapus.key.remoteJid;
+                    const namaGrup = chatYangDihapus.key.remoteJid.endsWith('@g.us') ? 'di Grup' : 'di PC';
+
+                    // Laporan ke Owner
+                    const laporan = 
+`🚨 *ANTI-DELETE DETECTED* 🚨
+--------------------------------
+👤 *Pelaku:* @${participant.split('@')[0]}
+📍 *Lokasi:* ${namaGrup}
+🕒 *Waktu:* Sekarang
+--------------------------------
+_Berikut pesan/media yang dihapus:_`;
+
+                    // 1. Kirim Teks Laporan dulu
+                    await sock.sendMessage(NOMOR_OWNER, { 
+                        text: laporan, 
+                        mentions: [participant] 
+                    });
+
+                    // 2. Teruskan Pesan Aslinya (Gambar/Video/Stiker/Teks) ke Owner
+                    // Kita pakai fitur 'forward' bawaan Baileys, jadi isinya persis sama
+                    await sock.sendMessage(NOMOR_OWNER, { 
+                        forward: chatYangDihapus, 
+                        force: true 
+                    });
+
+                } catch (e) {
+                    console.log("Gagal kirim anti-delete:", e);
+                }
+            }
+        }
+
+        // ... (LANJUT KE KODINGAN UTAMA ABANG: const from = ... body = ... dll) ...
+
         const from = msg.key.remoteJid;
         const type = Object.keys(msg.message)[0];
         // Simpan gambar terakhir di chat ini (untuk !qrauto)
@@ -3396,23 +3454,18 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
 
                     await sock.sendMessage(from, {
                         text:
-            `*Admin Menu BangBot (Safe Mode)*
-
-            • *!tagall* / *!everyone*
-            Tag semua member (gunakan seperlunya, biar nggak spam).
-
-            • *!kick* @user
-            Keluarkan member dari grup (manual, hanya admin).
-
-            • *!promote* @user
-            Jadikan member sebagai admin.
-
-            • *!demote* @user
-            Turunkan admin jadi member biasa (kecuali admin yang dilindungi).
-
-            Semua aksi di atas:
-            - Hanya bisa dipakai admin grup,
-            - Bot juga harus jadi admin untuk bisa eksekusi.`
+            `
+• !kick
+• !promote
+• !demote
+• !tagall
+• !hidetag
+• !group open/close
+• !setname
+• !setdesc
+• !link
+• !revoke
+• !del`
                     });
                 }
             }
@@ -3468,133 +3521,185 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                 }
             }
 
+// =================================================
+            // 👮‍♂️ FITUR KHUSUS GROUP ADMIN
             // =================================================
-            // KICK (hanya admin, manual, Safe Mode)
-            // =================================================
+
+            // 1. HIDETAG (Tag All Invisible)
+            if (cmd === "!hidetag") {
+                if (!isGroup) return sock.sendMessage(from, { text: "Khusus Grup Bang." }, { quoted: msg });
+                if (!isAdmin) return sock.sendMessage(from, { text: "❌ Lu bukan Admin, jangan macem-macem." }, { quoted: msg });
+
+                const textHidetag = teks.replace("!hidetag", "").trim();
+                const groupMetadata = await sock.groupMetadata(from);
+                const participants = groupMetadata.participants.map(p => p.id);
+
+                // Kirim pesan dengan me-mention semua orang (tapi teks mention-nya kosong)
+                await sock.sendMessage(from, { 
+                    text: textHidetag || "📢 *PENGUMUMAN DARI ADMIN*", 
+                    mentions: participants 
+                });
+            }
+
+            // 2. KICK MEMBER
             if (cmd === "!kick") {
-                if (!isGroup) {
-                    await sock.sendMessage(from, {
-                        text: "Command *!kick* hanya bisa dipakai di grup, Bang."
-                    });
-                    return;
+                if (!isGroup) return sock.sendMessage(from, { text: "Khusus Grup Bang." }, { quoted: msg });
+                if (!isAdmin) return sock.sendMessage(from, { text: "❌ Lu bukan Admin." }, { quoted: msg });
+                if (!isBotAdmin) return sock.sendMessage(from, { text: "❌ Bot harus jadi Admin dulu biar bisa nendang orang." }, { quoted: msg });
+
+                // Ambil target dari REPLY atau TAG
+                let target = "";
+                if (msg.message.extendedTextMessage?.contextInfo?.participant) {
+                    // Cara 1: Reply chat target
+                    target = msg.message.extendedTextMessage.contextInfo.participant;
+                } else if (msg.message.extendedTextMessage?.contextInfo?.mentionedJid) {
+                    // Cara 2: Tag target (@628xxx)
+                    target = msg.message.extendedTextMessage.contextInfo.mentionedJid[0];
+                } else {
+                    return sock.sendMessage(from, { text: "⚠️ Reply chat orangnya atau Tag (@nama) yang mau di-kick." }, { quoted: msg });
                 }
 
-                const isAdminSender = await isGroupAdmin(sock, from, sender);
-                if (!isAdminSender) {
-                    await sock.sendMessage(from, {
-                        text: "Command ini khusus admin grup, Bang."
-                    });
-                    return;
-                }
-
-                const botIsAdmin = await isBotAdmin(sock, from);
-                if (!botIsAdmin) {
-                    await sock.sendMessage(from, {
-                        text: "BangBot belum jadi admin, jadi tidak bisa *kick* member."
-                    });
-                    return;
-                }
-
-                const ctx = msg.message?.extendedTextMessage?.contextInfo;
-                const mentions = ctx?.mentionedJid || [];
-
-                if (!mentions.length) {
-                    await sock.sendMessage(from, {
-                        text: "Format: !kick @user (mention member yang mau dikeluarkan)"
-                    });
-                    return;
-                }
-
-                // Filter: jangan kick owner bot & admin yang dilindungi
-                const targets = mentions.filter(jid =>
-                    !PROTECTED_ADMINS.includes(jid) && jid !== OWNER_JID && jid !== sock.user.id
-                );
-
-                if (!targets.length) {
-                    await sock.sendMessage(from, {
-                        text: "Target tidak valid atau termasuk admin yang dilindungi, Bang."
-                    });
-                    return;
-                }
-
+                // Eksekusi Kick
                 try {
-                    await sock.groupParticipantsUpdate(from, targets, "remove");
-                    await sock.sendMessage(from, {
-                        text: `Sudah dicoba keluarkan: ${targets.map(j => `@${j.split("@")[0]}`).join(", ")}`,
-                        mentions: targets
-                    });
-                } catch (err) {
-                    console.error("kick error:", err);
-                    await sock.sendMessage(from, {
-                        text: "Gagal mengeluarkan member. Cek lagi hak admin BangBot."
-                    });
+                    await sock.groupParticipantsUpdate(from, [target], "remove");
+                    await sock.sendMessage(from, { text: "👋 Sayonara! Beban grup berkurang satu." }, { quoted: msg });
+                } catch (e) {
+                    await sock.sendMessage(from, { text: "Gagal kick. Mungkin dia sesama Admin/Bot." }, { quoted: msg });
                 }
             }
 
+            // 3. GROUP OPEN / CLOSE
+            if (cmd === "!group") {
+                if (!isGroup) return sock.sendMessage(from, { text: "Khusus Grup Bang." }, { quoted: msg });
+                if (!isAdmin) return sock.sendMessage(from, { text: "❌ Lu bukan Admin." }, { quoted: msg });
+                if (!isBotAdmin) return sock.sendMessage(from, { text: "❌ Jadiin Bot admin dulu Bang." }, { quoted: msg });
+
+                const args = teks.split(" ")[1]; // Ambil kata setelah !group
+
+                if (args === "close" || args === "tutup") {
+                    await sock.groupSettingUpdate(from, 'announcement');
+                    await sock.sendMessage(from, { text: "🔒 Grup DITUTUP oleh Admin. Hanya Admin yang bisa kirim pesan." });
+                } else if (args === "open" || args === "buka") {
+                    await sock.groupSettingUpdate(from, 'not_announcement');
+                    await sock.sendMessage(from, { text: "🔓 Grup DIBUKA kembali. Silakan meramaikan." });
+                } else {
+                    await sock.sendMessage(from, { text: "⚠️ Format salah.\nPilih: *!group open* atau *!group close*" }, { quoted: msg });
+                }
+            }
+
+// =================================================
+            // 👮‍♂️ ADMIN TOOLS EXTRA (POWERFUL)
             // =================================================
-            // PROMOTE & DEMOTE (hanya admin, Safe Mode)
-            // =================================================
-            if (cmd === "!promote" || cmd === "!demote") {
-                if (!isGroup) {
-                    await sock.sendMessage(from, {
-                        text: "Command ini hanya bisa dipakai di grup, Bang."
-                    });
-                    return;
-                }
 
-                const isAdminSender = await isGroupAdmin(sock, from, sender);
-                if (!isAdminSender) {
-                    await sock.sendMessage(from, {
-                        text: "Command ini khusus admin grup, Bang."
-                    });
-                    return;
-                }
+            // 4. PROMOTE (Naik Jabatan)
+            if (cmd === "!promote" || cmd === "!admin") {
+                if (!isGroup) return sock.sendMessage(from, { text: "Khusus Grup." });
+                if (!isAdmin) return sock.sendMessage(from, { text: "❌ Lu bukan Admin." });
+                if (!isBotAdmin) return sock.sendMessage(from, { text: "❌ Bot harus jadi Admin dulu." });
 
-                const botIsAdmin = await isBotAdmin(sock, from);
-                if (!botIsAdmin) {
-                    await sock.sendMessage(from, {
-                        text: "BangBot belum jadi admin, jadi tidak bisa promote/demote."
-                    });
-                    return;
-                }
+                let target = msg.message.extendedTextMessage?.contextInfo?.participant || 
+                             msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
 
-                const ctx = msg.message?.extendedTextMessage?.contextInfo;
-                const mentions = ctx?.mentionedJid || [];
-
-                if (!mentions.length) {
-                    await sock.sendMessage(from, {
-                        text: `Format: ${cmd} @user (mention member yang mau diubah statusnya)`
-                    });
-                    return;
-                }
-
-                // Jangan ubah status admin yang dilindungi dan owner
-                const targets = mentions.filter(jid =>
-                    !PROTECTED_ADMINS.includes(jid) && jid !== OWNER_JID && jid !== sock.user.id
-                );
-
-                if (!targets.length) {
-                    await sock.sendMessage(from, {
-                        text: "Target tidak valid atau termasuk admin yang dilindungi, Bang."
-                    });
-                    return;
-                }
-
-                const action = cmd === "!promote" ? "promote" : "demote";
-                const verb = cmd === "!promote" ? "dijadikan admin" : "diturunkan jadi member biasa";
+                if (!target) return sock.sendMessage(from, { text: "⚠️ Reply pesan atau Tag orangnya." });
 
                 try {
-                    await sock.groupParticipantsUpdate(from, targets, action);
-                    await sock.sendMessage(from, {
-                        text: `Sudah dicoba ${verb}: ${targets.map(j => `@${j.split("@")[0]}`).join(", ")}`,
-                        mentions: targets
-                    });
-                } catch (err) {
-                    console.error("promote/demote error:", err);
-                    await sock.sendMessage(from, {
-                        text: `Gagal ${verb}. Cek lagi hak admin BangBot.`
-                    });
+                    await sock.groupParticipantsUpdate(from, [target], "promote");
+                    await sock.sendMessage(from, { text: `✅ Sukses! @${target.split('@')[0]} sekarang jadi Admin.`, mentions: [target] });
+                } catch (e) {
+                    await sock.sendMessage(from, { text: "Gagal promote." });
                 }
+            }
+
+            // 5. DEMOTE (Turun Jabatan)
+            if (cmd === "!demote" || cmd === "!unadmin") {
+                if (!isGroup) return sock.sendMessage(from, { text: "Khusus Grup." });
+                if (!isAdmin) return sock.sendMessage(from, { text: "❌ Lu bukan Admin." });
+                if (!isBotAdmin) return sock.sendMessage(from, { text: "❌ Bot harus jadi Admin dulu." });
+
+                let target = msg.message.extendedTextMessage?.contextInfo?.participant || 
+                             msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+
+                if (!target) return sock.sendMessage(from, { text: "⚠️ Reply pesan atau Tag orangnya." });
+
+                try {
+                    await sock.groupParticipantsUpdate(from, [target], "demote");
+                    await sock.sendMessage(from, { text: `✅ Sukses! @${target.split('@')[0]} diturunkan jadi member biasa.`, mentions: [target] });
+                } catch (e) {
+                    await sock.sendMessage(from, { text: "Gagal demote." });
+                }
+            }
+
+            // 6. DELETE MESSAGE (Tarik Pesan Bot/Member)
+            if (cmd === "!del" || cmd === "!delete") {
+                if (!isGroup) return sock.sendMessage(from, { text: "Khusus Grup." });
+                if (!isAdmin) return sock.sendMessage(from, { text: "❌ Lu bukan Admin." });
+                if (!isBotAdmin) return sock.sendMessage(from, { text: "❌ Bot harus jadi Admin biar bisa hapus chat orang." });
+
+                if (!msg.message.extendedTextMessage?.contextInfo?.stanzaId) {
+                    return sock.sendMessage(from, { text: "⚠️ Reply pesan yang mau dihapus." });
+                }
+
+                const key = {
+                    remoteJid: from,
+                    fromMe: false,
+                    id: msg.message.extendedTextMessage.contextInfo.stanzaId,
+                    participant: msg.message.extendedTextMessage.contextInfo.participant
+                };
+
+                await sock.sendMessage(from, { delete: key });
+            }
+
+            // 7. GET LINK GROUP
+            if (cmd === "!link" || cmd === "!invitelink") {
+                if (!isGroup) return sock.sendMessage(from, { text: "Khusus Grup." });
+                if (!isAdmin) return sock.sendMessage(from, { text: "❌ Lu bukan Admin." });
+                if (!isBotAdmin) return sock.sendMessage(from, { text: "❌ Bot harus jadi Admin." });
+
+                try {
+                    const code = await sock.groupInviteCode(from);
+                    await sock.sendMessage(from, { text: `🔗 *Link Grup:*\nhttps://chat.whatsapp.com/${code}` });
+                } catch (e) {
+                    await sock.sendMessage(from, { text: "Gagal mengambil link." });
+                }
+            }
+
+            // 8. REVOKE LINK (Reset Link)
+            if (cmd === "!revoke" || cmd === "!resetlink") {
+                if (!isGroup) return sock.sendMessage(from, { text: "Khusus Grup." });
+                if (!isAdmin) return sock.sendMessage(from, { text: "❌ Lu bukan Admin." });
+                if (!isBotAdmin) return sock.sendMessage(from, { text: "❌ Bot harus jadi Admin." });
+
+                try {
+                    await sock.groupRevokeInvite(from);
+                    await sock.sendMessage(from, { text: "✅ Link grup berhasil di-reset. Link lama hangus." });
+                } catch (e) {
+                    await sock.sendMessage(from, { text: "Gagal reset link." });
+                }
+            }
+
+            // 9. SET GROUP NAME & DESC
+            if (cmd === "!setname") {
+                if (!isGroup) return sock.sendMessage(from, { text: "Khusus Grup." });
+                if (!isAdmin) return sock.sendMessage(from, { text: "❌ Lu bukan Admin." });
+                if (!isBotAdmin) return sock.sendMessage(from, { text: "❌ Bot harus jadi Admin." });
+
+                const newName = teks.replace("!setname", "").trim();
+                if (!newName) return sock.sendMessage(from, { text: "Namanya apa Bang?" });
+
+                await sock.groupUpdateSubject(from, newName);
+                await sock.sendMessage(from, { text: "✅ Nama grup diganti." });
+            }
+
+            if (cmd === "!setdesc") {
+                if (!isGroup) return sock.sendMessage(from, { text: "Khusus Grup." });
+                if (!isAdmin) return sock.sendMessage(from, { text: "❌ Lu bukan Admin." });
+                if (!isBotAdmin) return sock.sendMessage(from, { text: "❌ Bot harus jadi Admin." });
+
+                const newDesc = teks.replace("!setdesc", "").trim();
+                if (!newDesc) return sock.sendMessage(from, { text: "Deskripsinya apa Bang?" });
+
+                await sock.groupUpdateDescription(from, newDesc);
+                await sock.sendMessage(from, { text: "✅ Deskripsi grup diganti." });
             }
 
             // =================================================
