@@ -197,15 +197,12 @@ const activeConfess = {};
 const msgLog = {}; // Tempat nyimpen riwayat chat
 const NOMOR_OWNER = "628975800981@s.whatsapp.net"; // Ganti No WA Abang (pake @s.whatsapp.net)
 
-// --- CONFIG GEMINI AI (VERSI STABIL) ---
+// --- CONFIG GEMINI AI (VERSI FINAL FLASH-001) ---
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// 1. Model buat Chat (Text Only)
-const modelText = genAI.getGenerativeModel({ model: "gemini-pro" });
-
-// 2. Model buat Lihat Gambar (Vision)
-const modelVis = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+// Kita pakai satu model sakti ini buat Text & Gambar
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
 
 const moment = require('moment-timezone');
 const yts = require('yt-search');
@@ -4955,7 +4952,7 @@ _Sedang mengambil audio..._`;
             }
 
 // =================================================
-            // FITUR CURHAT V2.1 (GEMINI PRO)
+            // FITUR CURHAT V3 (GEMINI FLASH)
             // =================================================
             if (cmd === "!curhat" || cmd === "!saran" || cmd === "!ai") {
                 const curhatan = teks.replace(cmd, "").trim();
@@ -4970,8 +4967,7 @@ _Sedang mengambil audio..._`;
                     const prompt = `Kamu adalah 'BangBot', teman yang asik, gaul, lucu, dan bijak. Jawab curhatan user ini dengan bahasa santai (lo-gue).
                     Curhatan User: "${curhatan}"`;
 
-                    // PENTING: Pakai 'modelText'
-                    const result = await modelText.generateContent(prompt);
+                    const result = await model.generateContent(prompt);
                     const response = await result.response;
                     const text = response.text();
 
@@ -4979,7 +4975,7 @@ _Sedang mengambil audio..._`;
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
-                    console.error("Gemini Text Error:", e);
+                    console.error("Gemini Chat Error:", e);
                     await sock.sendMessage(from, { text: "❌ Maaf Bang, otak AI lagi error." }, { quoted: msg });
                 }
             }
