@@ -4949,7 +4949,7 @@ _Sedang mengambil audio..._`;
             }
 
 // =================================================
-            // FITUR CURHAT V4 (GROQ AI - LLAMA 3)
+            // FITUR CURHAT V4.1 (GROQ - LLAMA 3.3 UPDATE)
             // =================================================
             if (cmd === "!curhat" || cmd === "!saran" || cmd === "!ai") {
                 const curhatan = teks.replace(cmd, "").trim();
@@ -4962,7 +4962,7 @@ _Sedang mengambil audio..._`;
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
-                    // Panggil Groq (Model Llama 3 8B - Ringan & Pinter)
+                    // Panggil Groq dengan Model TERBARU (Llama 3.3 70B)
                     const chatCompletion = await groq.chat.completions.create({
                         messages: [
                             {
@@ -4974,7 +4974,8 @@ _Sedang mengambil audio..._`;
                                 content: curhatan
                             }
                         ],
-                        model: "llama3-8b-8192", // Model Meta yang super ngebut
+                        // GANTI NAMA MODEL JADI INI:
+                        model: "llama-3.3-70b-versatile", 
                     });
 
                     const response = chatCompletion.choices[0]?.message?.content || "Waduh, AI-nya bingung mau jawab apa.";
@@ -4984,7 +4985,7 @@ _Sedang mengambil audio..._`;
 
                 } catch (e) {
                     console.error("Groq Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Server lagi sibuk Bang, coba lagi nanti." }, { quoted: msg });
+                    await sock.sendMessage(from, { text: "❌ Server AI lagi update sistem Bang, coba lagi nanti." }, { quoted: msg });
                 }
             }
 
@@ -5017,7 +5018,8 @@ _Sedang mengambil audio..._`;
                                 content: `Berikan resep lengkap untuk membuat: ${masakan}`
                             }
                         ],
-                        model: "llama3-8b-8192", 
+                        // Di dalam kodingan !resep
+                        model: "llama-3.3-70b-versatile", // Ganti yang lama "llama3-8b-8192" jadi ini
                     });
 
                     const resep = chatCompletion.choices[0]?.message?.content;
@@ -9893,7 +9895,7 @@ Selesai Bang.`
             }
 
 // =================================================
-            // FITUR REMOVE BACKGROUND (SERVER BARU: RYZENDESU)
+            // FITUR REMOVE BACKGROUND (SERVER: AGATZ)
             // =================================================
             if (cmd === "!removebg" || cmd === "!hapusbg" || cmd === "!png") {
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
@@ -9917,25 +9919,30 @@ Selesai Bang.`
                         mediaBuffer = await downloadMediaMessage(msg, 'buffer', {});
                     }
 
-                    // 3. Upload ke Catbox (WAJIB ADA FUNGSI uploadToCatbox DI BAWAH)
+                    // 3. Upload ke Catbox (Pastikan fungsi uploadToCatbox ada di bawah)
                     const imageUrl = await uploadToCatbox(mediaBuffer);
 
-                    // 4. Panggil API Ryzendesu (Remove BG)
-                    const apiUrl = `https://api.ryzendesu.com/api/ai/removebg?url=${imageUrl}`;
+                    // 4. Panggil API Agatz
+                    // Agatz mengembalikan JSON, bukan gambar langsung
+                    const { data: res } = await axios.get(`https://api.agatz.xyz/api/removebg?url=${imageUrl}`);
 
-                    // 5. Kirim Hasil (Dikirim sebagai dokumen biar transparan-nya awet)
+                    if (!res || !res.data || !res.data.url) {
+                        throw new Error("Respon API Agatz kosong.");
+                    }
+
+                    // 5. Kirim Hasil (Ambil URL dari dalam JSON)
                     await sock.sendMessage(from, { 
-                        document: { url: apiUrl }, 
+                        document: { url: res.data.url }, 
                         mimetype: "image/png",
                         fileName: "removebg-bangbot.png",
-                        caption: "" 
+                        caption: "✨ *BACKGROUND TERHAPUS*" 
                     }, { quoted: msg });
 
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
                     console.error("RemoveBG Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Gagal menghapus background. Pastikan objeknya jelas atau coba lagi nanti." }, { quoted: msg });
+                    await sock.sendMessage(from, { text: "❌ Server lagi pada tumbang Bang. Coba lagi nanti ya." }, { quoted: msg });
                 }
             }
 
