@@ -4868,7 +4868,7 @@ Bot berjalan lancar di PC Abang!`;
             }
 
 // =================================================
-            // FITUR PLAY MUSIC V2 (COBALT ENGINE)
+            // FITUR PLAY MUSIC V3 (STABIL)
             // =================================================
             if (cmd === "!play" || cmd === "!lagu" || cmd === "!song") {
                 const query = teks.replace(cmd, "").trim();
@@ -4882,7 +4882,7 @@ Bot berjalan lancar di PC Abang!`;
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
-                    // 1. CARI LAGU DI YOUTUBE (Pakai yt-search)
+                    // 1. CARI LAGU DI YOUTUBE
                     const search = await yts(query);
                     const video = search.videos[0]; 
 
@@ -4890,87 +4890,63 @@ Bot berjalan lancar di PC Abang!`;
                         return sock.sendMessage(from, { text: "❌ Lagu tidak ditemukan." }, { quoted: msg });
                     }
 
-                    // Tampilkan Info Dulu
+                    // Tampilkan Info
                     const infoLagu = 
 `*Judul:* ${video.title}
 *Durasi:* ${video.timestamp}
 *Views:* ${video.views}
 *Link:* ${video.url}
 
-_Bentar, audio sedang proses..._`;
+_Sedang mengambil audio..._`;
 
                     await sock.sendMessage(from, { 
                         image: { url: video.thumbnail }, 
                         caption: infoLagu 
                     }, { quoted: msg });
 
-                    // 2. DOWNLOAD PAKAI COBALT API (POST Request)
-                    // API ini butuh settingan khusus di headers biar gak ditolak
-                    const cobaltUrl = "https://api.cobalt.tools/api/json";
-                    
-                    const body = {
-                        url: video.url,
-                        vCodec: "h264",
-                        vQuality: "720",
-                        aFormat: "mp3", // Kita minta convert ke MP3
-                        isAudioOnly: true // Khusus Audio
-                    };
+                    let audioUrl = "";
 
-                    const { data: res } = await axios.post(cobaltUrl, body, {
-                        headers: {
-                            "Accept": "application/json",
-                            "Content-Type": "application/json",
-                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    // 2. COBA DOWNLOAD (SERVER 1: RYZENDESU)
+                    try {
+                        const apiUrl = `https://api.ryzendesu.com/api/downloader/ytmp3?url=${video.url}`;
+                        const { data: res } = await axios.get(apiUrl);
+                        if (res.url) {
+                            audioUrl = res.url;
                         }
-                    });
-
-                    // Cek respon
-                    if (!res || (!res.url && !res.picker)) {
-                        throw new Error("Gagal mengambil link dari Cobalt.");
+                    } catch (err1) {
+                        console.log("Server 1 Gagal, mencoba Server 2...");
                     }
 
-                    // Kadang Cobalt ngasih 'picker' (beberapa opsi), kadang langsung 'url'
-                    let audioUrl = res.url;
-                    if (res.picker && res.picker.length > 0) {
-                        audioUrl = res.picker[0].url;
+                    // 3. JIKA SERVER 1 GAGAL, COBA (SERVER 2: WIDIPE)
+                    if (!audioUrl) {
+                        try {
+                            const apiUrl2 = `https://widipe.com/download/ytdl?url=${video.url}`;
+                            const { data: res2 } = await axios.get(apiUrl2);
+                            if (res2.result && res2.result.mp3) {
+                                audioUrl = res2.result.mp3;
+                            }
+                        } catch (err2) {
+                            console.log("Server 2 Gagal.");
+                        }
                     }
 
-                    if (!audioUrl) throw new Error("Link audio kosong.");
+                    if (!audioUrl) {
+                        throw new Error("Semua server downloader sibuk/gagal.");
+                    }
 
-                    // 3. KIRIM AUDIO
+                    // 4. KIRIM AUDIO
                     await sock.sendMessage(from, { 
                         audio: { url: audioUrl }, 
                         mimetype: 'audio/mp4', 
-                        ptt: false, // Kirim sebagai lagu (True = Voice Note)
+                        ptt: false, 
                         fileName: `${video.title}.mp3`
                     }, { quoted: msg });
 
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
-                    console.error("Play Cobalt Error:", e);
-                    // OPSI CADANGAN: KALAU COBALT GAGAL, PAKAI RYZENDESU
-                    try {
-                         // Kita cari lagi link video-nya karena variabel 'video' ada di scope try atas
-                         const searchBackup = await yts(query);
-                         const vidUrl = searchBackup.videos[0].url;
-                         
-                         const backupUrl = `https://api.ryzendesu.com/api/downloader/ytmp3?url=${vidUrl}`;
-                         const { data: backupRes } = await axios.get(backupUrl);
-
-                         if (backupRes.url) {
-                            await sock.sendMessage(from, { 
-                                audio: { url: backupRes.url }, 
-                                mimetype: 'audio/mp4', 
-                                ptt: false 
-                            }, { quoted: msg });
-                            return; // Sukses di backup
-                         }
-                    } catch (e2) {
-                        // Nyerah
-                    }
-                    
-                    await sock.sendMessage(from, { text: "❌ Gagal download lagu. Server Cobalt & Backup lagi sibuk semua." }, { quoted: msg });
+                    console.error("Play Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Gagal download lagu. Coba cari judul yang lebih spesifik atau durasi lebih pendek." }, { quoted: msg });
                 }
             }
 
