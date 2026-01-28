@@ -4868,22 +4868,22 @@ Bot berjalan lancar di PC Abang!`;
             }
 
 // =================================================
-            // FITUR PLAY MUSIC V4 (3 LAPIS SERVER)
+            // FITUR PLAY MUSIC V5 (DIRECT BROWSER MODE)
             // =================================================
             if (cmd === "!play" || cmd === "!lagu" || cmd === "!song") {
                 const query = teks.replace(cmd, "").trim();
 
                 if (!query) {
                     return sock.sendMessage(from, { 
-                        text: `⚠️ Judul lagunya apa Bang?\nContoh: *${cmd} Mahalini Sial*` 
+                        text: `⚠️ Judul lagunya apa Bang?\nContoh: *${cmd} Dewa 19 Kangen*` 
                     }, { quoted: msg });
                 }
 
-                await sock.sendMessage(from, { react: { text: "🔍", key: msg.key } });
-                await sock.sendMessage(from, { text: `⏳ Sedang mencari & mendownload lagu: *"${query}"*...` }, { quoted: msg });
+                await sock.sendMessage(from, { react: { text: "🎧", key: msg.key } });
+                await sock.sendMessage(from, { text: `⏳ Sedang memproses via Jalur Khusus...` }, { quoted: msg });
 
                 try {
-                    // 1. CARI LAGU DI YOUTUBE
+                    // 1. CARI VIDEO DULU
                     const search = await yts(query);
                     const video = search.videos[0]; 
 
@@ -4891,66 +4891,88 @@ Bot berjalan lancar di PC Abang!`;
                         return sock.sendMessage(from, { text: "❌ Lagu tidak ditemukan." }, { quoted: msg });
                     }
 
-                    // Tampilkan Info
                     const infoLagu = 
 `🎵 *MUSIC FOUND* 🎵
 
 📌 *Judul:* ${video.title}
 ⏱️ *Durasi:* ${video.timestamp}
-👀 *Views:* ${video.views}
 🔗 *Link:* ${video.url}
 
-_Sedang mencoba 3 server download..._`;
+_Sedang mengambil audio..._`;
 
                     await sock.sendMessage(from, { 
                         image: { url: video.thumbnail }, 
                         caption: infoLagu 
                     }, { quoted: msg });
 
-                    let audioUrl = "";
+                    // 2. FUNGSI RAHASIA: SCRAPE Y2MATE LANGSUNG
+                    // Kita pura-pura jadi Browser Chrome biar gak diblokir
+                    const y2matePost = async (url) => {
+                        const headers = {
+                            "accept": "*/*",
+                            "accept-language": "en-US,en;q=0.9,id;q=0.8",
+                            "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+                            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                        };
 
-                    // --- SERVER 1: VREDEN ---
+                        // Tahap A: Analisa Video
+                        const { data: analyze } = await axios.post(
+                            "https://www.y2mate.com/mates/analyzeV2/ajax", 
+                            new URLSearchParams({
+                                k_query: url,
+                                k_page: "home",
+                                hl: "en",
+                                q_auto: 0,
+                            }), 
+                            { headers }
+                        );
+
+                        if (!analyze || !analyze.links || !analyze.links.mp3) return null;
+
+                        // Cari kualitas MP3 terbaik (biasanya '128k' atau yg pertama muncul)
+                        const videoId = analyze.vid;
+                        const mp3Key = Object.values(analyze.links.mp3)[0].k; // Ambil key convert pertama
+
+                        // Tahap B: Konversi ke Link Download
+                        const { data: convert } = await axios.post(
+                            "https://www.y2mate.com/mates/convertV2/ajax",
+                            new URLSearchParams({
+                                vid: videoId,
+                                k: mp3Key,
+                            }),
+                            { headers }
+                        );
+
+                        if (convert && convert.dlink) {
+                            return convert.dlink;
+                        }
+                        return null;
+                    };
+
+                    // JALANKAN SCRAPER
+                    let audioUrl = await y2matePost(video.url);
+
+                    // CADANGAN: KALAU Y2MATE GAGAL, PAKAI FALLBACK API BARU (DREADED)
                     if (!audioUrl) {
+                        console.log("Scraper gagal, mencoba API Cadangan...");
                         try {
-                            console.log("Mencoba Server 1 (Vreden)...");
-                            const { data: res1 } = await axios.get(`https://api.vreden.web.id/api/ytmp3?url=${video.url}`);
-                            if (res1.result && res1.result.url) {
-                                audioUrl = res1.result.url;
-                                console.log("Server 1 Sukses!");
-                            }
-                        } catch (e) { console.log("Server 1 Gagal."); }
+                           const { data: resBackup } = await axios.get(`https://api.dreaded.site/api/ytdl/audio?url=${video.url}`);
+                           if (resBackup.status && resBackup.result) {
+                               audioUrl = resBackup.result.downloadLink || resBackup.result;
+                           }
+                        } catch (errBackup) {
+                            console.log("Backup gagal.");
+                        }
                     }
 
-                    // --- SERVER 2: SIPUTZX ---
                     if (!audioUrl) {
-                        try {
-                            console.log("Mencoba Server 2 (Siputzx)...");
-                            const { data: res2 } = await axios.get(`https://api.siputzx.my.id/api/d/ytmp3?url=${video.url}`);
-                            if (res2.data && res2.data.dl) {
-                                audioUrl = res2.data.dl;
-                                console.log("Server 2 Sukses!");
-                            }
-                        } catch (e) { console.log("Server 2 Gagal."); }
+                        // OPSI TERAKHIR: KIRIM LINK SAJA
+                        return sock.sendMessage(from, { 
+                            text: `❌ *Gagal Upload Audio*\nServer bot lagi dimusuhi YouTube Bang.\n\nKlik link ini aja buat download manual:\n${video.url}` 
+                        }, { quoted: msg });
                     }
 
-                    // --- SERVER 3: WIDIPE (BACKUP TERAKHIR) ---
-                    if (!audioUrl) {
-                        try {
-                            console.log("Mencoba Server 3 (Widipe)...");
-                            const { data: res3 } = await axios.get(`https://widipe.com/download/ytdl?url=${video.url}`);
-                            if (res3.result && res3.result.mp3) {
-                                audioUrl = res3.result.mp3;
-                                console.log("Server 3 Sukses!");
-                            }
-                        } catch (e) { console.log("Server 3 Gagal."); }
-                    }
-
-                    // JIKA SEMUA GAGAL
-                    if (!audioUrl) {
-                        throw new Error("Semua server sibuk.");
-                    }
-
-                    // KIRIM AUDIO
+                    // 3. KIRIM HASIL
                     await sock.sendMessage(from, { 
                         audio: { url: audioUrl }, 
                         mimetype: 'audio/mp4', 
@@ -4961,11 +4983,8 @@ _Sedang mencoba 3 server download..._`;
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
-                    console.error("Play Error:", e);
-                    // FALLBACK: Kalau audio gagal total, kirim link-nya aja biar user download sendiri
-                    await sock.sendMessage(from, { 
-                        text: `❌ *Gagal mengirim audio.* Server lagi pada down Bang.\n\nSilakan klik link ini buat dengar manual:\n${query.includes('http') ? query : 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query)}` 
-                    }, { quoted: msg });
+                    console.error("Play V5 Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Server lagi capek banget Bang. Coba lagi nanti." }, { quoted: msg });
                 }
             }
 
