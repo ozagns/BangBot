@@ -4768,35 +4768,6 @@ Bot berjalan lancar di PC Abang!`;
                 return;
             }
 
-            // --- FITUR TEXT TO IMAGE (AI IMAGE) ---
-            if (cmd === "!img" || cmd === "!image" || cmd === "!lukis") {
-                const query = teks.replace(cmd, "").trim();
-
-                if (!query) {
-                    return sock.sendMessage(from, { text: "Mau gambar apa Bang? Contoh: *!img kucing naik motor*" }, { quoted: msg });
-                }
-
-                try {
-                    await sock.sendMessage(from, { text: "Proses Bang..." }, { quoted: msg });
-
-                    // Menggunakan API Pollinations (Gratis, No Key)
-                    // Kita encode query agar spasi & simbol terbaca server dengan benar
-                    const imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(query)}`;
-
-                    // Kirim gambar langsung menggunakan URL
-                    // Bot akan otomatis mendownload dan mengirimkannya
-                    await sock.sendMessage(from, { 
-                        image: { url: imgUrl }, 
-                        caption: `*Prompt:* ${query}` 
-                    }, { quoted: msg });
-
-                } catch (err) {
-                    console.error("Img Error:", err);
-                    await sock.sendMessage(from, { text: "Gagal membuat gambar. Server mungkin sedang sibuk." }, { quoted: msg });
-                }
-                return;
-            }
-
 // =================================================
             // FITUR EDIT IMAGE VIA PROMPT (POLLINATIONS IMG2IMG)
             // =================================================
