@@ -30,7 +30,7 @@ const https = require("https");
 const fs = require('fs');
 const os = require('os'); // Bisa taruh di atas file juga
 const path = require('path');
-const ytdl = require('@distube/ytdl-core');
+const { ytmp3 } = require('btch-downloader');
 
 function listFilesRecursive(dir) {
   let results = [];
@@ -4869,22 +4869,22 @@ Bot berjalan lancar di PC Abang!`;
             }
 
 // =================================================
-            // FITUR PLAY MUSIC V6 (LOCAL ENGINE - ANTI RIBET)
+            // FITUR PLAY MUSIC V7 (THE AGGREGATOR)
             // =================================================
             if (cmd === "!play" || cmd === "!lagu" || cmd === "!song") {
                 const query = teks.replace(cmd, "").trim();
 
                 if (!query) {
                     return sock.sendMessage(from, { 
-                        text: `⚠️ Judul lagunya apa Bang?\nContoh: *${cmd} Sheila on 7*` 
+                        text: `⚠️ Judul lagunya apa Bang?\nContoh: *${cmd} Juicy Luicy Lantas*` 
                     }, { quoted: msg });
                 }
 
                 await sock.sendMessage(from, { react: { text: "🎧", key: msg.key } });
-                await sock.sendMessage(from, { text: `⏳ Sedang memproses...` }, { quoted: msg });
+                await sock.sendMessage(from, { text: `⏳ Sedang mencari & memproses audio...` }, { quoted: msg });
 
                 try {
-                    // 1. CARI LAGU DI YOUTUBE
+                    // 1. CARI VIDEO DI YOUTUBE
                     const search = await yts(query);
                     const video = search.videos[0]; 
 
@@ -4893,39 +4893,43 @@ Bot berjalan lancar di PC Abang!`;
                     }
 
                     const infoLagu = 
-`🎵 *MUSIC PLAYER* 🎵
+`🎵 *MUSIC FOUND* 🎵
 
 📌 *Judul:* ${video.title}
 ⏱️ *Durasi:* ${video.timestamp}
 🔗 *Link:* ${video.url}
 
-_Sedang mengambil audio..._`;
+_Sedang mengambil audio via Scraper Aggregator..._`;
 
                     await sock.sendMessage(from, { 
                         image: { url: video.thumbnail }, 
                         caption: infoLagu 
                     }, { quoted: msg });
 
-                    // 2. DOWNLOAD PAKAI ENGINE LOKAL (@distube/ytdl-core)
-                    // Kita pakai 'pipe' biar hemat memori server
-                    const stream = ytdl(video.url, { 
-                        filter: 'audioonly', 
-                        quality: 'highestaudio' 
-                    });
+                    // 2. DOWNLOAD PAKAI BTCH-DOWNLOADER
+                    // Ini akan mencoba berbagai sumber otomatis (y2mate, dll)
+                    const data = await ytmp3(video.url);
 
-                    // 3. KIRIM STREAM LANGSUNG KE WA
-                    // Bot tidak perlu simpan file, langsung oper ke user (Streaming)
+                    if (!data || !data.audio) {
+                        throw new Error("Link audio tidak ditemukan oleh scraper.");
+                    }
+
+                    // 3. KIRIM HASIL
                     await sock.sendMessage(from, { 
-                        audio: { stream: stream }, 
+                        audio: { url: data.audio }, 
                         mimetype: 'audio/mp4', 
-                        ptt: false 
+                        ptt: false, 
+                        fileName: `${video.title}.mp3`
                     }, { quoted: msg });
 
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
-                    console.error("Play V6 Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Gagal memproses audio. Coba judul lain." }, { quoted: msg });
+                    console.error("Play V7 Error:", e);
+                    // FALLBACK TERAKHIR BANGET: KIRIM LINK
+                    await sock.sendMessage(from, { 
+                        text: `❌ *Gagal Download Audio*\n\nYouTube memblokir akses server bot. Silakan download manual di sini:\n${query.includes('http') ? query : 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query)}` 
+                    }, { quoted: msg });
                 }
             }
 
