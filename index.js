@@ -197,14 +197,10 @@ const activeConfess = {};
 const msgLog = {}; // Tempat nyimpen riwayat chat
 const NOMOR_OWNER = "628975800981@s.whatsapp.net"; // Ganti No WA Abang (pake @s.whatsapp.net)
 
-// --- SETUP AI REPLICATE ---
-const Replicate = require("replicate");
-
-// HAPUS TOKEN YANG TERTULIS LANGSUNG, GANTI JADI INI:
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN, // Mengambil dari file .env atau Server
-});
-
+// --- CONFIG GEMINI AI ---
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 const moment = require('moment-timezone');
 const yts = require('yt-search');
 
@@ -481,6 +477,24 @@ function execAsync(cmd) {
             resolve(stdout ? stdout.toString() : "");
         });
     });
+}
+
+// --- FUNGSI TAMBAHAN DI PALING BAWAH FILE ---
+async function uploadToCatbox(buffer) {
+    const { FormData } = require("formdata-node");
+    const { fileFromPath } = require("formdata-node/file-from-path");
+    const { Blob } = require("buffer");
+    
+    // Kita pakai API Catbox.moe (Gratis & Stabil)
+    const form = new FormData();
+    form.append("reqtype", "fileupload");
+    form.append("fileToUpload", new Blob([buffer]), "image.jpg");
+
+    const { data } = await axios.post("https://catbox.moe/user/api.php", form, {
+        headers: { "Content-Type": "multipart/form-data" } // Biar axios otomatis atur boundary
+    });
+    
+    return data.trim(); // Balikin URL gambar (contoh: https://files.catbox.moe/xyz.jpg)
 }
 
 // =================================================================
@@ -3229,7 +3243,7 @@ _Berikut pesan/media yang dihapus:_`;
 • !ai pertanyaan → Tanya jawab cerdas (ChatGPT)
 • !img teks → Buat gambar dari teks (AI)
 • !edit → edit foto
-• !jadianime → foto jadi anime
+• !toanime → foto jadi anime
 • !curhat [Ceritamu]`;
 
                 await sock.sendMessage(from, { text: aiMsg }, { quoted: msg });
@@ -3415,7 +3429,7 @@ _Berikut pesan/media yang dihapus:_`;
 • !ai [pertanyaan] → Tanya jawab cerdas dengan ChatGPT
 • !img [teks] → Generate gambar dari teks (AI)
 • !edit → edit foto
-• !jadianime → foto jadi anime
+• !toanime → foto jadi anime
 • !curhat [Ceritamu]
 • !summarize → Ringkas teks yang panjang
 • !paraphrase → Ubah susunan kalimat (anti-plagiasi)
@@ -4783,88 +4797,54 @@ Bot berjalan lancar di PC Abang!`;
             }
 
 // =================================================
-            // FITUR AI EDIT FOTO (BY REPLICATE)
+            // FITUR EDIT IMAGE VIA PROMPT (POLLINATIONS IMG2IMG)
             // =================================================
-            if (cmd === "!edit" || cmd === "!aiedit") {
-                // 1. Cek apakah ada caption perintahnya?
-                const prompt = teks.replace(cmd, "").trim();
-                if (!prompt) {
-                    return sock.sendMessage(from, { 
-                        text: "⚠️ Perintahnya apa Bang?\nContoh: *!edit ubah rambutnya jadi warna merah*" 
-                    }, { quoted: msg });
-                }
-
-                // 2. Cek apakah ada gambar yang direply atau dikirim bareng command?
+            if (cmd === "!edit" || cmd === "!ubah") {
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
                 const isImage = msg.message.imageMessage;
-                
+                const prompt = teks.replace(cmd, "").trim();
+
                 if (!isQuotedImage && !isImage) {
-                    return sock.sendMessage(from, { 
-                        text: "⚠️ Kirim gambar dengan caption !edit [perintah], atau reply gambar dengan command itu." 
-                    }, { quoted: msg });
+                    return sock.sendMessage(from, { text: `⚠️ Kirim/Reply foto dengan caption perintah.\nContoh: *${cmd} rambut jadi merah*` }, { quoted: msg });
                 }
 
+                if (!prompt) {
+                    return sock.sendMessage(from, { text: "⚠️ Mau diedit jadi apa Bang? Tulis perintahnya." }, { quoted: msg });
+                }
+
+                // 1. React 'Jam' 🕑
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
-                await sock.sendMessage(from, { text: "Sebentar Bang, AI lagi mikir... (Agak lama nih)" }, { quoted: msg });
 
                 try {
-                    // 3. Download gambar dari WhatsApp jadi buffer
+                    // 2. Download Gambar Asli
                     let mediaBuffer;
                     if (isQuotedImage) {
-                         // Download dari pesan yang di-reply
                         mediaBuffer = await downloadMediaMessage(
-                            { message: msg.message.extendedTextMessage.contextInfo.quotedMessage },
-                            'buffer',
-                            { },
+                            { message: msg.message.extendedTextMessage.contextInfo.quotedMessage }, 'buffer', {}
                         );
                     } else {
-                         // Download dari pesan bergambar langsung
-                        mediaBuffer = await downloadMediaMessage(
-                            msg,
-                            'buffer',
-                            { },
-                        );
+                        mediaBuffer = await downloadMediaMessage(msg, 'buffer', {});
                     }
 
-                    // 4. Kirim ke Replicate AI (Model InstructPix2Pix)
-                    // Model ini jago ngedit gambar berdasarkan instruksi teks
-                    // Kita pakai model yang agak cepat: "tstramer/material-diffusion" atau sejenisnya
-                    // Model rekomendasi untuk edit: "timothybrooks/instruct-pix2pix"
-                    
-                    const output = await replicate.run(
-                      "timothybrooks/instruct-pix2pix:30c1d0b916a6f8efce20493f5d61ee2975216ca399c900014275f56498164475",
-                      {
-                        input: {
-                          image: mediaBuffer, // Kirim buffer gambar langsung
-                          prompt: prompt,     // Instruksi dari user
-                          num_inference_steps: 20, // Makin tinggi makin detail tapi makin lama
-                          image_guidance_scale: 1.5 // Seberapa mirip dengan gambar asli
-                        }
-                      }
-                    );
+                    // 3. Upload ke Catbox (Wajib ada fungsi uploadToCatbox di bawah)
+                    const imageUrl = await uploadToCatbox(mediaBuffer);
 
-                    // Output dari Replicate biasanya berupa Array berisi URL gambar [ 'https://...' ]
-                    if (output && output[0]) {
-                        const resultUrl = output[0];
+                    // 4. Pakai Pollinations dengan Parameter Image
+                    // Format: url/prompt/...?image=URL_GAMBAR
+                    const randomSeed = Math.floor(Math.random() * 1000);
+                    const finalUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${randomSeed}&nologo=true&model=flux&image=${encodeURIComponent(imageUrl)}`;
 
-                        // 5. Kirim hasilnya balik ke user
-                        await sock.sendMessage(from, { 
-                            image: { url: resultUrl }, 
-                            caption: `✅ Sukses Edit AI!\n\nPerintah: "${prompt}"`
-                        }, { quoted: msg });
-                        
-                        await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+                    // 5. Kirim Hasil
+                    await sock.sendMessage(from, { 
+                        image: { url: finalUrl }, 
+                        caption: `Done` 
+                    }, { quoted: msg });
 
-                    } else {
-                        throw new Error("Output AI kosong.");
-                    }
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
-                    console.error("AI Edit Error:", e);
-                    await sock.sendMessage(from, { 
-                        text: "❌ Gagal Bang. Mungkin AI-nya lagi sibuk, server limit, atau gambarnya terlalu rumit." 
-                    }, { quoted: msg });
-                    await sock.sendMessage(from, { react: { text: "❌", key: msg.key } });
+                    console.error("Edit Prompt Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Gagal mengedit. Server lagi sibuk." }, { quoted: msg });
                 }
             }
 
@@ -4880,8 +4860,7 @@ Bot berjalan lancar di PC Abang!`;
                     }, { quoted: msg });
                 }
 
-                await sock.sendMessage(from, { react: { text: "🎧", key: msg.key } });
-                await sock.sendMessage(from, { text: `⏳ Sedang mencari & memproses audio...` }, { quoted: msg });
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
                     // 1. CARI VIDEO DI YOUTUBE
@@ -4893,11 +4872,9 @@ Bot berjalan lancar di PC Abang!`;
                     }
 
                     const infoLagu = 
-`🎵 *MUSIC FOUND* 🎵
-
-📌 *Judul:* ${video.title}
-⏱️ *Durasi:* ${video.timestamp}
-🔗 *Link:* ${video.url}
+`*Judul:* ${video.title}
+*Durasi:* ${video.timestamp}
+*Link:* ${video.url}
 
 _Sedang mengambil audio..._`;
 
@@ -4974,64 +4951,34 @@ _Sedang mengambil audio..._`;
             }
 
 // =================================================
-            // FITUR CURHAT (AI TEMAN BIJAK)
+            // FITUR CURHAT V2 (GEMINI AI - GRATIS)
             // =================================================
             if (cmd === "!curhat" || cmd === "!saran") {
                 const curhatan = teks.replace(cmd, "").trim();
 
                 if (!curhatan) {
                     return sock.sendMessage(from, { 
-                        text: `⚠️ Mau curhat apa? Cerita aja, aku dengerin kok.\n\nContoh:\n*${cmd} Aku lagi capek banget sama kerjaan, rasanya pengen nyerah.*` 
+                        text: `⚠️ Mau curhat apa Bang?\nContoh: *${cmd} Aku lagi capek banget kerja*` 
                     }, { quoted: msg });
                 }
 
-                // Kasih reaksi kuping (mendengarkan)
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
                 
-                // Typing effect biar kayak manusia mikir
-                await sock.sendPresenceUpdate('composing', from); 
-
                 try {
-                    // Kita pakai model Llama 3 (Gratis/Murah & Cepat di Replicate)
-                    // Prompt-nya kita set biar dia jadi teman yang asik
-                    const output = await replicate.run(
-                        "meta/meta-llama-3-8b-instruct",
-                        {
-                            input: {
-                                prompt: `User berkata: "${curhatan}"`,
-                                system_prompt: "Kamu adalah 'BangBot', teman curhat yang sangat empatik, bijak, santai, dan suportif. Gunakan bahasa Indonesia yang gaul, akrab, tapi tetap sopan (seperti teman dekat). Jangan kaku. Berikan semangat atau solusi jika diminta. Jangan terlalu panjang, secukupnya saja.",
-                                max_tokens: 300,
-                                temperature: 0.7, // 0.7 biar kreatif tapi tetep nyambung
-                                top_p: 0.9
-                            }
-                        }
-                    );
+                    // Setting instruksi biar Gemini jadi teman gaul
+                    const prompt = `Kamu adalah 'BangBot', teman yang asik, gaul, lucu, dan bijak. Jawab curhatan user ini dengan bahasa santai (lo-gue) layaknya teman dekat. Jangan kaku. Berikan solusi jika perlu.
+                    
+                    Curhatan User: "${curhatan}"`;
 
-                    // Output Llama di Replicate biasanya Array string, kita gabung
-                    const balasanAI = output.join("").trim();
+                    const result = await model.generateContent(prompt);
+                    const response = await result.response;
+                    const text = response.text();
 
-                    await sock.sendMessage(from, { 
-                        text: balasanAI 
-                    }, { quoted: msg });
-
-                    // Kasih reaksi love/peluk di akhir
-                    await sock.sendMessage(from, { react: { text: "❤️", key: msg.key } });
+                    await sock.sendMessage(from, { text: text }, { quoted: msg });
 
                 } catch (e) {
-                    console.error("Curhat Error:", e);
-                    // Fallback kalau AI error/habis kuota
-                    const fallbackMsg = [
-                        "Sabar ya Bang, badai pasti berlalu. Tetap semangat!",
-                        "Aku tau ini berat, tapi kamu pasti kuat melewatinya.",
-                        "Kalau butuh istirahat, istirahat dulu aja. Jangan dipaksa.",
-                        "Dunia emang kadang gak adil, tapi Tuhan gak pernah tidur.",
-                        "Cerita aja terus kalau lega, aku di sini kok."
-                    ];
-                    const randomSabar = fallbackMsg[Math.floor(Math.random() * fallbackMsg.length)];
-                    
-                    await sock.sendMessage(from, { 
-                        text: `(AI lagi istirahat) tapi intinya: ${randomSabar}` 
-                    }, { quoted: msg });
+                    console.error("Gemini Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Otak AI lagi error Bang, coba lagi nanti." }, { quoted: msg });
                 }
             }
 
@@ -5130,61 +5077,54 @@ _Note: Ini cuma ramalan/arti kata, jangan baper ya Bang!_`;
             }
 
 // =================================================
-            // 1. FITUR BIKIN GAMBAR (TEXT-TO-IMAGE)
+            // FITUR IMAGE GENERATOR (POLLINATIONS - NO WM)
             // =================================================
-            if (cmd === "!img" || cmd === "!image" || cmd === "!lukis") {
+            if (cmd === "!img" || cmd === "!lukis") {
                 const prompt = teks.replace(cmd, "").trim();
 
                 if (!prompt) {
-                    return sock.sendMessage(from, { text: `⚠️ Mau gambar apa Bang?\nContoh: *${cmd} kucing naik motor di bulan*` }, { quoted: msg });
+                    return sock.sendMessage(from, { text: `⚠️ Mau gambar apa?\nContoh: *${cmd} kucing cyberpunk*` }, { quoted: msg });
                 }
 
+                // React baru sesuai request (Jam)
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
-                await sock.sendMessage(from, { text: "Sedang proses... (Tunggu ±20 detik)" }, { quoted: msg });
 
                 try {
-                    // Pakai Model Stable Diffusion (Gratis/Murah di Replicate)
-                    const output = await replicate.run(
-                        "stability-ai/stable-diffusion:ac732df83cea7fff18b8472768c88ad041fa750ff7682a21affe81863cbe77e4",
-                        {
-                            input: {
-                                prompt: prompt,
-                                scheduler: "K_EULER_ANCESTRAL",
-                                num_inference_steps: 30
-                            }
-                        }
-                    );
+                    // Random seed biar gambar beda-beda terus
+                    const randomSeed = Math.floor(Math.random() * 1000);
+                    
+                    // Tambahkan '&nologo=true' biar bersih
+                    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?seed=${randomSeed}&width=1024&height=1024&model=flux&nologo=true`;
 
-                    // Output berupa array link gambar
-                    if (output && output[0]) {
-                        await sock.sendMessage(from, { 
-                            image: { url: output[0] }, 
-                            caption: `*AI IMAGE GENERATOR*\n\nPrompt: "${prompt}"` 
-                        }, { quoted: msg });
-                        await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
-                    }
+                    await sock.sendMessage(from, { 
+                        image: { url: url }, 
+                        caption: `Prompt: ${prompt}` 
+                    }, { quoted: msg });
+
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+
                 } catch (e) {
-                    console.error("AI Img Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Gagal membuat gambar. Server sibuk." }, { quoted: msg });
+                    console.error("Img Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Gagal membuat gambar." }, { quoted: msg });
                 }
             }
 
+// =================================================
+            // FITUR TO ANIME (WIDIPE - GRATIS)
             // =================================================
-            // 2. FITUR FOTO JADI ANIME
-            // =================================================
-            if (cmd === "!jadianime" || cmd === "!anime") {
+            if (cmd === "!toanime" || cmd === "!jadianime") {
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
                 const isImage = msg.message.imageMessage;
-                
+
                 if (!isQuotedImage && !isImage) {
-                    return sock.sendMessage(from, { text: "⚠️ Kirim foto atau reply foto dengan caption *!jadianime*" }, { quoted: msg });
+                    return sock.sendMessage(from, { text: "⚠️ Kirim/Reply foto muka orang dengan caption *!toanime*" }, { quoted: msg });
                 }
 
+                // React Baru 🕑
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
-                await sock.sendMessage(from, { text: "Sedang proses... (Agak lama ±30s)" }, { quoted: msg });
 
                 try {
-                    // Download Media
+                    // 1. Download Gambar dari WA
                     let mediaBuffer;
                     if (isQuotedImage) {
                         mediaBuffer = await downloadMediaMessage(
@@ -5194,32 +5134,67 @@ _Note: Ini cuma ramalan/arti kata, jangan baper ya Bang!_`;
                         mediaBuffer = await downloadMediaMessage(msg, 'buffer', {});
                     }
 
-                    // Convert Buffer ke Base64 Data URI (Syarat Replicate utk img-to-img)
-                    const base64Image = `data:image/jpeg;base64,${mediaBuffer.toString('base64')}`;
+                    // 2. Upload ke Internet (Catbox) biar punya Link
+                    const imageUrl = await uploadToCatbox(mediaBuffer);
 
-                    // Model: Anything V3 / V4 (Spesialis Anime)
-                    const output = await replicate.run(
-                        "cjwbw/anything-v3-better-vae:09a5805203f4c12da649ec1923bb7729517ca25fcac790e640eaa9ed66573b65",
-                        {
-                            input: {
-                                image: base64Image,
-                                prompt: "masterpiece, best quality, highres, anime style",
-                                negative_prompt: "low quality, bad anatomy, text, error, extra digits",
-                                num_inference_steps: 25,
-                                guidance_scale: 7
-                            }
-                        }
-                    );
+                    // 3. Panggil API Gratis (Widipe)
+                    const apiUrl = `https://widipe.com/toanime?url=${imageUrl}`;
+                    
+                    // Langsung kirim hasilnya
+                    await sock.sendMessage(from, { 
+                        image: { url: apiUrl }, 
+                        caption: "Done Bang" 
+                    }, { quoted: msg });
 
-                    if (output && output[0]) {
-                        await sock.sendMessage(from, { 
-                            image: { url: output[0] }, 
-                            caption: `🎌 *SUKSES JADI WIBU!*` 
-                        }, { quoted: msg });
-                    }
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+
                 } catch (e) {
-                    console.error("Anime Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Gagal convert. Pastikan fotonya jelas (wajah)." }, { quoted: msg });
+                    console.error("ToAnime Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Gagal Bang. Pastikan fotonya jelas muka orang." }, { quoted: msg });
+                }
+            }
+
+            // =================================================
+            // FITUR HD / REMINI (PENGGANTI !EDIT)
+            // =================================================
+            if (cmd === "!hd" || cmd === "!remini") {
+                const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
+                const isImage = msg.message.imageMessage;
+
+                if (!isQuotedImage && !isImage) {
+                    return sock.sendMessage(from, { text: "⚠️ Kirim/Reply foto burik dengan caption *!hd*" }, { quoted: msg });
+                }
+
+                // React Baru 🕑
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+
+                try {
+                    // 1. Download Gambar
+                    let mediaBuffer;
+                    if (isQuotedImage) {
+                        mediaBuffer = await downloadMediaMessage(
+                            { message: msg.message.extendedTextMessage.contextInfo.quotedMessage }, 'buffer', {}
+                        );
+                    } else {
+                        mediaBuffer = await downloadMediaMessage(msg, 'buffer', {});
+                    }
+
+                    // 2. Upload ke Catbox
+                    const imageUrl = await uploadToCatbox(mediaBuffer);
+
+                    // 3. Panggil API Gratis (Widipe Remini)
+                    const apiUrl = `https://widipe.com/remini?url=${imageUrl}`;
+
+                    await sock.sendMessage(from, { 
+                        image: { url: apiUrl }, 
+                        caption: "Done Bang" 
+                    }, { quoted: msg });
+
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+
+                } catch (e) {
+                    console.error("HD Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Gagal HD-in foto. Server lagi sibuk." }, { quoted: msg });
                 }
             }
 
