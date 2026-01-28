@@ -6133,7 +6133,6 @@ ${bar}
                 if (!text) return sock.sendMessage(from, { text: "Mau nulis apa Bang?" }, { quoted: msg });
 
                 try {
-                    await sock.sendMessage(from, { text: "Proses Bang..." }, { quoted: msg });
 
                     const stamp = Date.now();
                     const output = `./nulis_${stamp}.jpg`;
@@ -6202,7 +6201,6 @@ ${bar}
                 const REACTION_BAR_URL = "https://i.ibb.co/3WqQPqL/ios-reaction-bar-dark.png"; 
 
                 try {
-                    await sock.sendMessage(from, { text: "🎨 Sedang merakit screenshot..." }, { quoted: msg });
 
                     const width = 800; 
                     const height = 1200; 
@@ -6328,7 +6326,6 @@ ${bar}
                 if (!posisi) posisi = "bottom";
 
                 try {
-                    await sock.sendMessage(from, { text: `📄 Menambah nomor halaman di posisi: *${posisi}*...` }, { quoted: msg });
 
                     const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 
@@ -6413,8 +6410,6 @@ ${bar}
                 try {
                     const originalName = quote.documentMessage.fileName || "File_Tanpa_Nama.bin";
                     
-                    await sock.sendMessage(from, { text: `🧹 Sedang membersihkan nama file...\nAsli: _${originalName}_` }, { quoted: msg });
-
                     // 2. Logika Pembersihan (The Brain)
                     // Ambil ekstensi (pdf, docx, dll)
                     const extIndex = originalName.lastIndexOf('.');
@@ -6550,7 +6545,6 @@ ${bar}
                 if (!query) return sock.sendMessage(from, { text: "Mau cek harga apa Bang? Contoh: *!harga iphone 15*" }, { quoted: msg });
 
                 try {
-                    await sock.sendMessage(from, { text: `🛒 Mencari harga "${query}" di toko...` }, { quoted: msg });
 
                     const cheerio = require('cheerio');
                     const https = require('https');
@@ -6623,7 +6617,6 @@ ${bar}
                 }
 
                 try {
-                    await sock.sendMessage(from, { text: "Proses Bang..." }, { quoted: msg });
 
                     // Prompt khusus agar AI memberikan list ide yang variatif
                     const prompt = `Berikan 10 ide kreatif, unik, dan out-of-the-box tentang "${topic}". Tuliskan dalam format poin-poin yang jelas dan bahasa Indonesia yang santai tapi cerdas.`;
@@ -6651,7 +6644,6 @@ ${bar}
                 }
 
                 try {
-                    await sock.sendMessage(from, { text: "Proses Bang..." }, { quoted: msg });
 
                     // Prompt khusus SWOT
                     const prompt = `Buatkan analisis SWOT (Strengths, Weaknesses, Opportunities, Threats) secara detail dan kritis untuk topik: "${topic}". Berikan strategi singkat di akhir.`;
@@ -6679,7 +6671,6 @@ ${bar}
                 }
 
                 try {
-                    await sock.sendMessage(from, { text: "Proses Bang..." }, { quoted: msg });
 
                     // Prompt Teknik 5 Whys (Toyota Method)
                     const prompt = `Gunakan metode "The 5 Whys" untuk mencari akar penyebab dari masalah: "${problem}". Jelaskan rantai sebab-akibatnya dari Why 1 sampai Why 5, lalu berikan solusi akhir (Root Cause Fix).`;
@@ -6785,7 +6776,6 @@ _Simpan nomor ini atau gunakan bot saat panik._`;
                 }
 
                 try {
-                    await sock.sendMessage(from, { text: "🕵️‍♂️ Sedang menyelidiki metadata file..." }, { quoted: msg });
 
                     const { PDFDocument } = require('pdf-lib');
                     
@@ -6837,7 +6827,6 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                 if (!query) return sock.sendMessage(from, { text: "Mau cari lirik lagu apa Bang? Contoh: *!lirik Nadin Bertaut*" }, { quoted: msg });
 
                 try {
-                    await sock.sendMessage(from, { text: "Proses Bang..." }, { quoted: msg });
 
                     const cheerio = require('cheerio');
                     
@@ -6915,7 +6904,6 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                 try {
                     if (cmd === "!berita") {
                         // --- MODE BERITA (CNN INDONESIA) ---
-                        await sock.sendMessage(from, { text: "Proses Bang..." }, { quoted: msg });
                         
                         // RSS CNN Indonesia (Nasional)
                         const feed = await parser.parseURL('https://www.cnnindonesia.com/nasional/rss');
@@ -6933,7 +6921,6 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
 
                     } else {
                         // --- MODE GOOGLE TRENDS ---
-                        await sock.sendMessage(from, { text: "Proses Bang..." }, { quoted: msg });
 
                         // RSS Google Trends Indonesia (geo=ID)
                         const feed = await parser.parseURL('https://trends.google.com/trends/trendingsearches/daily/rss?geo=ID');
@@ -6976,7 +6963,6 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                 }
 
                 try {
-                    await sock.sendMessage(from, { text: "🔐 Sedang mengunci PDF..." }, { quoted: msg });
 
                     const { PDFDocument, StandardFonts } = require('pdf-lib');
                     
@@ -7039,7 +7025,6 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                 }
 
                 try {
-                    await sock.sendMessage(from, { text: "Proses Bang..." }, { quoted: msg });
 
                     const { PDFDocument } = require('pdf-lib');
                     
@@ -7103,7 +7088,6 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                 }
 
                 try {
-                    await sock.sendMessage(from, { text: `Memutar halaman PDF (${degreesToAdd}°)...` }, { quoted: msg });
 
                     const { PDFDocument, degrees } = require('pdf-lib');
 
@@ -7165,7 +7149,6 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                 }
 
                 try {
-                    await sock.sendMessage(from, { text: `✂️ Sedang memproses halaman ${args}...` }, { quoted: msg });
 
                     const { PDFDocument } = require('pdf-lib');
 
@@ -7257,7 +7240,6 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                 }
 
                 try {
-                    await sock.sendMessage(from, { text: `🗑️ Sedang membuang halaman ${args}...` }, { quoted: msg });
 
                     const { PDFDocument } = require('pdf-lib');
 
@@ -7348,7 +7330,6 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                 }
 
                 try {
-                    await sock.sendMessage(from, { text: "📄 Mengubah foto ke PDF..." }, { quoted: msg });
 
                     const { PDFDocument } = require('pdf-lib');
 
@@ -7420,7 +7401,6 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                 }
 
                 try {
-                    await sock.sendMessage(from, { text: "🍏 Sedang mengubah format iPhone ke JPG..." }, { quoted: msg });
 
                     const buf = await downloadMediaMessage({ message: quote }, "buffer");
                     const stamp = Date.now();
@@ -7472,8 +7452,6 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                     const isTargetPng = cmd.includes("png");
                     const outputExt = isTargetPng ? "png" : "jpg";
                     const outputLabel = isTargetPng ? "PNG" : "JPG";
-
-                    await sock.sendMessage(from, { text: `🎨 Sedang mengubah ke format ${outputLabel}...` }, { quoted: msg });
 
                     // 3. Download Media
                     const buf = await downloadMediaMessage({ message: quote }, "buffer");
@@ -7543,7 +7521,6 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                 else if (cmd.includes("m4a") || args === "m4a") targetFormat = "m4a";
 
                 try {
-                    await sock.sendMessage(from, { text: `🎵 Sedang mengubah audio ke format *${targetFormat.toUpperCase()}*...` }, { quoted: msg });
 
                     // 3. Download & Siapkan Path
                     const buf = await downloadMediaMessage({ message: quote }, "buffer");
@@ -7641,8 +7618,6 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                     const displayStart = new Date(startTime * 1000).toISOString().substr(14, 5); // Format mm:ss
                     const displayEnd = new Date(endTime * 1000).toISOString().substr(14, 5);
                     
-                    await sock.sendMessage(from, { text: `✂️ Memotong video...\n⏱️ Posisi: ${displayStart} s.d ${displayEnd}\n⏳ Durasi: ${duration} detik` }, { quoted: msg });
-
                     const buf = await downloadMediaMessage({ message: quote }, "buffer");
                     const stamp = Date.now();
                     const inPath = `./cut_in_${stamp}.mp4`;
@@ -7679,7 +7654,6 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                 }
 
                 try {
-                    await sock.sendMessage(from, { text: "Sedang membedah struktur font..." }, { quoted: msg });
 
                     const { PDFDocument, PDFName, PDFDict } = require('pdf-lib');
                     
@@ -7763,8 +7737,8 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                     const targetSpace = isToCMYK ? "CMYK" : "sRGB"; // sRGB adalah standar layar HP/Monitor
                     
                     const textProcess = isToCMYK 
-                        ? "🖨️ Mengubah ke CMYK (Siap Cetak)..." 
-                        : "🖥️ Mengubah ke RGB (Siap Layar)...";
+                        ? "" 
+                        : "";
 
                     await sock.sendMessage(from, { text: textProcess }, { quoted: msg });
 
@@ -8261,8 +8235,6 @@ Gunakan format: *[angka] [satuan_asal] to [satuan_tujuan]*
 
                     if (!pdfBuf) throw new Error("PDF buffer kosong.");
 
-                    await sock.sendMessage(from, { text: "⏳ Memotong halaman PDF..." }, { quoted: msg });
-
                     const src = await PDFDocument.load(pdfBuf);
                     const total = src.getPageCount();
 
@@ -8349,8 +8321,6 @@ Gunakan format: *[angka] [satuan_asal] to [satuan_tujuan]*
                 await sock.sendMessage(from, { text: "File harus PPT/PPTX." }, { quoted: msg });
                 return;
                 }
-
-                await sock.sendMessage(from, { text: "Proses Bang!" }, { quoted: msg });
 
                 // Download file ke disk
                 const workDir = path.join(__dirname, "downloads", "ppt2pdf");
@@ -8439,7 +8409,6 @@ Gunakan format: *[angka] [satuan_asal] to [satuan_tujuan]*
             if (cmd === "!vocalremove") {
 
             try {
-                await sock.sendMessage(from, { text: "⏳ Memproses vocal remove (FFmpeg)..." }, { quoted: msg });
 
                 // Ambil media (audio/video) dari message langsung atau quoted
                 let mediaMsg = null;
@@ -8640,8 +8609,6 @@ Gunakan format: *[angka] [satuan_asal] to [satuan_tujuan]*
                 return;
             }
 
-            await sock.sendMessage(from, { text: `⏳ Menggabungkan ${q.length} PDF...` }, { quoted: msg });
-
             try {
                 const outBuf = await mergePdfsToBuffer(q.map(x => x.path));
                 const outName = `BangBot_Merged_${Date.now()}.pdf`;
@@ -8677,7 +8644,7 @@ Gunakan format: *[angka] [satuan_asal] to [satuan_tujuan]*
             if (arg === "clear" || arg === "reset") {
                 for (const it of q) { try { fs.unlinkSync(it.path); } catch {} }
                 audioMixQueue.set(chatId, []);
-                await sock.sendMessage(from, { text: "✅ Antrian audiomix dikosongkan." }, { quoted: msg });
+                await sock.sendMessage(from, { text: "Antrian audiomix dikosongkan." }, { quoted: msg });
                 return;
             }
 
@@ -8687,7 +8654,7 @@ Gunakan format: *[angka] [satuan_asal] to [satuan_tujuan]*
                 return;
                 }
                 const lines = q.map((it, i) => `${i + 1}) ${it.name || path.basename(it.path)}`).join("\n");
-                await sock.sendMessage(from, { text: `🎧 Antrian audiomix:\n${lines}` }, { quoted: msg });
+                await sock.sendMessage(from, { text: `Antrian audiomix:\n${lines}` }, { quoted: msg });
                 return;
             }
 
@@ -8734,13 +8701,12 @@ Gunakan format: *[angka] [satuan_asal] to [satuan_tujuan]*
                 // kalau belum 2 file, tunggu
                 if (q.length < 2) {
                 await sock.sendMessage(from, {
-                    text: `✅ Audio ditambahkan (${q.length}/2).\nReply audio kedua lalu ketik *!audiomix* lagi.`
+                    text: `Audio ditambahkan (${q.length}/2).\nReply audio kedua lalu ketik *!audiomix* lagi.`
                 }, { quoted: msg });
                 return;
                 }
 
                 // sudah 2 file: proses overlay mix
-                await sock.sendMessage(from, { text: "⏳ Menggabungkan 2 audio..." }, { quoted: msg });
 
                 const a = q[0].path;
                 const b = q[1].path;
@@ -8929,7 +8895,6 @@ Sumber: wttr.in`
                 if (!quotedAud) return sock.sendMessage(from, { text: "Reply VN-nya dulu, Bang!" }, { quoted: msg });
 
                 try {
-                    await sock.sendMessage(from, { text: "⏳ Sedang memproses..." }, { quoted: msg });
                     const buf = await downloadMediaMessage({ message: ctx.quotedMessage }, "buffer");
 
                     const stamp = Date.now();
@@ -8946,7 +8911,7 @@ Sumber: wttr.in`
                     if (!hasilTeks) {
                         await sock.sendMessage(from, { text: "Gagal mendeteksi suara. Pastikan VN jelas dan gunakan Bahasa Indonesia." }, { quoted: msg });
                     } else {
-                        await sock.sendMessage(from, { text: `📝 *Hasil Transkripsi:* \n\n"${hasilTeks}"` }, { quoted: msg });
+                        await sock.sendMessage(from, { text: `"${hasilTeks}"` }, { quoted: msg });
                     }
 
                     if (fs.existsSync(inPath)) fs.unlinkSync(inPath);
@@ -8962,9 +8927,7 @@ Sumber: wttr.in`
             // gempa
             // =================================================
             if (cmd === "!gempa") {
-                try {
-                    await sock.sendMessage(from, { text: "Proses Bang..." }, { quoted: msg });
-                    
+                try {                    
                     const g = await fetchGempaTerkini();
                     
                     const teksGempa = `⚠️ *INFO GEMPA TERKINI* ⚠️
@@ -9020,8 +8983,6 @@ if (cmd === "!crypto") {
     }
 
     try {
-        await sock.sendMessage(from, { text: "Proses Bang!" }, { quoted: msg });
-
         const data = await getCryptoPrice(coinId);
 
         const usd = data.usd;
@@ -9085,10 +9046,6 @@ Sumber: CoinGecko`;
                     });
                     return;
                 }
-
-                await sock.sendMessage(from, {
-                    text: `Mencari data anime: *${query}* ...`
-                });
 
                 try {
                     const res = await axios.get(`${JIKAN_BASE}/anime`, {
@@ -9182,10 +9139,6 @@ Setelah itu restart bot.`
                     });
                     return;
                 }
-
-                await sock.sendMessage(from, {
-                    text: `Mencari data film: *${query}* ...`
-                });
 
                 try {
                     const url = `https://www.omdbapi.com/`;
@@ -9322,7 +9275,7 @@ ${imdbLink}`
 
                         await sock.sendMessage(from, {
                             text:
-                `📦 *CEK RESI SPX (Shopee Express)*
+                `*CEK RESI SPX (Shopee Express)*
                 Nomor : *${resi}*
                 Status: *${info.status || "-"}*
                 Dari  : ${info.origin || "-"}
@@ -9361,7 +9314,7 @@ ${imdbLink}`
 
                     await sock.sendMessage(from, {
                         text:
-            `📦 *CEK RESI (${courier.toUpperCase()})*
+            `*CEK RESI (${courier.toUpperCase()})*
             Nomor : *${resi}*
             Status: *${info.status}*
             Dari  : ${info.origin}
@@ -9396,14 +9349,11 @@ ${imdbLink}`
                 await sock.sendMessage(from, { text: "URL tidak valid, Bang." });
                 return;
             }
-
-            await sock.sendMessage(from, { text: `Mengambil screenshot dari:\n${url}` });
-
             try {
                 const img = await fetchWebsiteScreenshot(axios, url);
                 await sock.sendMessage(from, {
                 image: img,
-                caption: `✅ Screenshot:\n${url}`,
+                caption: `Screenshot:\n${url}`,
                 });
             } catch (err) {
                 console.error("ssweb error:", err?.response?.status || err?.message || err);
@@ -9433,13 +9383,10 @@ ${imdbLink}`
                 await sock.sendMessage(from, { text: "URL tidak valid." });
                 return;
             }
-
-            await sock.sendMessage(from, { text: `Proses Bang!` });
-
             try {
                 const shortUrl = await shortenWithBitly(axios, url);
                 await sock.sendMessage(from, {
-                text: `✅ *Short URL (Bitly)*\n\nAsli  : ${url}\nShort : ${shortUrl}`
+                text: `Asli  : ${url}\nShort : ${shortUrl}`
                 });
             } catch (err) {
                 console.error("bitly error:", err?.response?.data || err.message);
@@ -9484,9 +9431,7 @@ ${imdbLink}`
 
                     await sock.sendMessage(from, {
                         text:
-            `Selesai Bang!
-
-Short : ${url}
+            `Short : ${url}
 Asli  : ${finalUrl}`
                     });
 
