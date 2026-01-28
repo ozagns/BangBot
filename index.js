@@ -4533,7 +4533,6 @@ _Video dikirim tanpa watermark!_`;
                 }
 
                 try {
-                    await sock.sendMessage(from, { text: "Proses Bang..." }, { quoted: msg });
 
                     // Kita gunakan wrapper 'emojik' yang mengarah langsung ke server Google
                     // Format URL: https://emojik.vercel.app/s/🥺_😭?size=512
@@ -4668,39 +4667,101 @@ _Video dikirim tanpa watermark!_`;
             }
 
 // =================================================
-            // FITUR GET STICKER (SEARCH INDO)
+            // FITUR CEK STATUS SERVER (DIAGNOSTIC TOOL)
+            // =================================================
+            if (cmd === "!status" || cmd === "!cek" || cmd === "!ping") {
+                await sock.sendMessage(from, { react: { text: "🩺", key: msg.key } });
+
+                let report = "📊 *LAPORAN STATUS SERVER*\n--------------------------\n";
+                const start = Date.now();
+
+                // 1. CEK KONEKSI INTERNET (Ping Google)
+                try {
+                    await axios.get("https://www.google.com");
+                    report += "🌐 *Internet Bot:* ✅ Aman\n";
+                } catch (e) {
+                    report += "🌐 *Internet Bot:* ❌ Down/Lambat\n";
+                }
+
+                // 2. CEK GROQ (Otak Curhat & Resep)
+                try {
+                    await groq.chat.completions.create({
+                        messages: [{ role: "user", content: "hi" }],
+                        model: "llama-3.3-70b-versatile",
+                        max_tokens: 1
+                    });
+                    report += "🤖 *Groq AI (Curhat):* ✅ Aktif\n";
+                } catch (e) {
+                    report += "🤖 *Groq AI (Curhat):* ❌ Error (Cek Key/Model)\n";
+                }
+
+                // 3. CEK GEMINI (Mata Vision)
+                try {
+                    // Cek generate text simple
+                    await model.generateContent("tes");
+                    report += "🧠 *Gemini (Vision):* ✅ Aktif\n";
+                } catch (e) {
+                    report += "🧠 *Gemini (Vision):* ❌ Error (Cek Key)\n";
+                }
+
+                // 4. CEK UPLOAD GAMBAR (Catbox)
+                try {
+                    await axios.get("https://catbox.moe/user/api.php"); // Cek endpoint hidup aja
+                    report += "📂 *Catbox (Upload):* ✅ Aktif\n";
+                } catch (e) {
+                    report += "📂 *Catbox (Upload):* ❌ Down\n";
+                }
+
+                // 5. CEK STIKER (Giphy)
+                try {
+                    // Cek akses ke Giphy public
+                    await axios.get("https://api.giphy.com/v1/stickers/trending?api_key=TvF9Udz2Y1uZ91Ju&limit=1");
+                    report += "🎨 *Giphy (Stiker):* ✅ Aktif\n";
+                } catch (e) {
+                    report += "🎨 *Giphy (Stiker):* ❌ Down\n";
+                }
+
+                // 6. CEK AGATZ (Remove BG)
+                try {
+                    await axios.get("https://api.agatz.xyz");
+                    report += "✂️ *Agatz (RemoveBG):* ✅ Aktif\n";
+                } catch (e) {
+                    report += "✂️ *Agatz (RemoveBG):* ❌ Down\n";
+                }
+
+                // Hitung Kecepatan Respon
+                const latency = Date.now() - start;
+                report += `--------------------------\n⚡ *Kecepatan:* ${latency}ms`;
+
+                await sock.sendMessage(from, { text: report }, { quoted: msg });
+                await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+            }
+
+// =================================================
+            // FITUR GET STICKER (SUMBER: GIPHY OFFICIAL)
             // =================================================
             if (cmd === "!gets" || cmd === "!caristiker") {
                 let query = teks.replace(cmd, "").trim();
 
-                // 1. Kalau user gak ketik apa-apa, bot pilihkan topik Indo secara acak
+                // 1. Kalau user gak ketik apa-apa, random topik Indo
                 if (!query) {
-                    const topikIndo = [
-                        "stiker pentol lucu", 
-                        "meme indonesia", 
-                        "stiker patrick sindiran", 
-                        "stiker kucing lucu", 
-                        "tuman",
-                        "stiker wa kocak"
-                    ];
+                    const topikIndo = ["pentol lucu", "tuman", "patrick sindiran", "kucing nangis", "meme indonesia"];
                     query = topikIndo[Math.floor(Math.random() * topikIndo.length)];
                 }
 
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
-
+                
                 try {
-                    // 2. Cari Stiker pakai API Ryzendesu
-                    const { data } = await axios.get(`https://api.ryzendesu.com/api/search/sticker?query=${encodeURIComponent(query)}`);
+                    // 2. Cari ke GIPHY (Pakai Public Beta Key yang awet)
+                    // Limit 10 biar ada variasi, rating g biar aman
+                    const { data } = await axios.get(`https://api.giphy.com/v1/stickers/search?api_key=TvF9Udz2Y1uZ91Ju&q=${encodeURIComponent(query)}&limit=10&rating=g`);
 
-                    // 3. Cek hasil
-                    if (data && data.results && data.results.length > 0) {
-                        // Ambil satu stiker secara acak dari hasil pencarian
-                        const randomSticker = data.results[Math.floor(Math.random() * data.results.length)];
-                        
-                        // Link stiker biasanya ada di property 'url' atau 'media_url'
-                        const stickerUrl = randomSticker.url || randomSticker.media_url;
+                    if (data.data && data.data.length > 0) {
+                        // Ambil 1 stiker random dari 10 hasil teratas
+                        const randomIndex = Math.floor(Math.random() * data.data.length);
+                        const stickerUrl = data.data[randomIndex].images.original.url;
 
-                        // 4. Kirim Stiker
+                        // 3. Kirim Stiker
                         await sock.sendMessage(from, { 
                             sticker: { url: stickerUrl } 
                         }, { quoted: msg });
@@ -4708,19 +4769,12 @@ _Video dikirim tanpa watermark!_`;
                         await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                     } else {
-                        await sock.sendMessage(from, { text: "❌ Yah, stiker Indo-nya gak ketemu Bang." }, { quoted: msg });
+                        await sock.sendMessage(from, { text: "❌ Stiker tidak ditemukan Bang." }, { quoted: msg });
                     }
 
                 } catch (e) {
                     console.error("Gets Error:", e);
-                    // Fallback kalau Ryzendesu error, coba cari di Giphy tapi tambah kata 'Indonesia'
-                    try {
-                         await sock.sendMessage(from, { 
-                            sticker: { url: `https://media.giphy.com/media/search?q=${query}+indonesia` } // Contoh simple
-                        }, { quoted: msg });
-                    } catch (err) {
-                        await sock.sendMessage(from, { text: "❌ Server stiker lagi ngambek Bang." }, { quoted: msg });
-                    }
+                    await sock.sendMessage(from, { text: "❌ Gagal mengambil stiker. Sinyal lagi jelek." }, { quoted: msg });
                 }
             }
 
