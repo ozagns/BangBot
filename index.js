@@ -30,8 +30,6 @@ const https = require("https");
 const fs = require('fs');
 const os = require('os'); // Bisa taruh di atas file juga
 const path = require('path');
-// di atas, paling enak tambah:
-const path = require("path");
 
 function listFilesRecursive(dir) {
   let results = [];
@@ -4215,50 +4213,72 @@ _Untuk membalas balik, gunakan command *!confess* lagi._`;
                 // CABANG BERDASARKAN PLATFORM
                 // ============================
 
-                // ---------- TIKTOK ----------
-                if (cmd === "tt" || cmd === "!tt") {
-                    const url = teks.replace(/!tt/i, "").trim();
+// =================================================
+            // FITUR DOWNLOAD TIKTOK (NO WATERMARK)
+            // =================================================
+            if (cmd === "!tiktok" || cmd === "!tt") {
+                const url = teks.replace(cmd, "").trim();
 
-                    if (!url || !url.includes("tiktok.com")) {
-                        await sock.sendMessage(from, {
-                            text: "Format: *!tt url_tiktok*\nContoh: !tt https://www.tiktok.com/@fujiiian/video/7579162142369139988"
-                        }, { quoted: msg });
-                        return;
-                    }
-
-                    const limitCheck = checkDownloadLimit(sender, from);
-                    if (!limitCheck.ok) {
-                        await sock.sendMessage(from, { text: limitCheck.message }, { quoted: msg });
-                        return;
-                    }
-
-                    await sock.sendMessage(from, {
-                        text: "Proses Bang!"
-                    }, { quoted: msg });
-
-                    // 1) Coba TikMate dulu
-                    const result = await handleTikTokViaTikMate(sock, from, msg, url);
-
-                    if (result.ok) {
-                        // Selesai, tidak perlu backup
-                        return;
-                    }
-
-                    // 2) Kalau TikMate gagal → fallback ke TikCDN
-                    await sock.sendMessage(from, {
-                        text: "⚠ Server bermasalah, mencoba server backup..."
-                    }, { quoted: msg });
-
-                    const backupOk = await handleTikTokViaTikcdn(sock, from, msg, url, result.id);
-
-                    if (!backupOk) {
-                        await sock.sendMessage(from, {
-                            text: "❌ Gagal download TikTok. Coba beberapa saat lagi."
-                        }, { quoted: msg });
-                    }
-
-                    return;
+                if (!url) {
+                    return sock.sendMessage(from, { text: `⚠️ Link TikTok-nya mana Bang?\nContoh: *${cmd} https://vt.tiktok.com/xxxx/*` }, { quoted: msg });
                 }
+
+                // Cek apakah URL valid
+                if (!url.includes("tiktok.com")) {
+                    return sock.sendMessage(from, { text: "⚠️ Link tidak valid. Pastikan link dari TikTok." }, { quoted: msg });
+                }
+
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+                await sock.sendMessage(from, { text: "Proses..." }, { quoted: msg });
+
+                try {
+                    // KITA PAKAI API "TIKLYDOWN" (Lebih Stabil & Gratis)
+                    const apiUrl = `https://api.tiklydown.eu.org/api/download?url=${url}`;
+                    const { data: res } = await axios.get(apiUrl);
+
+                    // Cek apakah video ditemukan
+                    if (!res || !res.video || !res.video.noWatermark) {
+                        throw new Error("Video tidak ditemukan atau API limit.");
+                    }
+
+                    const captionTikTok = 
+`*Author:* ${res.author.name} (@${res.author.unique_id})
+*Judul:* ${res.title}
+*Views:* ${res.stats.playCount}
+*Likes:* ${res.stats.likeCount}
+
+_Video dikirim tanpa watermark!_`;
+
+                    // Kirim Video
+                    await sock.sendMessage(from, { 
+                        video: { url: res.video.noWatermark }, 
+                        caption: captionTikTok 
+                    }, { quoted: msg });
+                    
+                    // Kirim Audio/Musik (Opsional, kalau mau audionya aja)
+                    // await sock.sendMessage(from, { audio: { url: res.music.play_url }, mimetype: 'audio/mp4' }, { quoted: msg });
+
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+
+                } catch (e) {
+                    console.error("TikTok Error:", e);
+                    // OPSI BACKUP: KALAU TIKLYDOWN GAGAL, COBA LOVETIK / AGATZ
+                    try {
+                        const backupUrl = `https://api.agatz.xyz/api/tiktok?url=${url}`;
+                        const { data: backupRes } = await axios.get(backupUrl);
+                        
+                        if (backupRes.status !== 200) throw new Error("Backup gagal.");
+
+                        await sock.sendMessage(from, { 
+                            video: { url: backupRes.data.data.no_watermark }, 
+                            caption: "✅ (Backup Server) Sukses Download!" 
+                        }, { quoted: msg });
+                        
+                    } catch (e2) {
+                        await sock.sendMessage(from, { text: "❌ Gagal download Bang. Videonya diprivate atau server lagi down." }, { quoted: msg });
+                    }
+                }
+            }
 
                 // ---------- PINTEREST ----------
                 if (cmd === "pin" || cmd === "!pin") {
