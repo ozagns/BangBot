@@ -4769,18 +4769,18 @@ Bot berjalan lancar di PC Abang!`;
             }
 
 // =================================================
-            // FITUR EDIT IMAGE VIA PROMPT (POLLINATIONS IMG2IMG)
+            // FITUR EDIT IMAGE VIA PROMPT (POLLINATIONS IMG2IMG - FIXED IDENTITY)
             // =================================================
             if (cmd === "!edit" || cmd === "!ubah") {
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
                 const isImage = msg.message.imageMessage;
-                const prompt = teks.replace(cmd, "").trim();
+                const promptUser = teks.replace(cmd, "").trim();
 
                 if (!isQuotedImage && !isImage) {
                     return sock.sendMessage(from, { text: `⚠️ Kirim/Reply foto dengan caption perintah.\nContoh: *${cmd} rambut jadi merah*` }, { quoted: msg });
                 }
 
-                if (!prompt) {
+                if (!promptUser) {
                     return sock.sendMessage(from, { text: "⚠️ Mau diedit jadi apa Bang? Tulis perintahnya." }, { quoted: msg });
                 }
 
@@ -4798,18 +4798,21 @@ Bot berjalan lancar di PC Abang!`;
                         mediaBuffer = await downloadMediaMessage(msg, 'buffer', {});
                     }
 
-                    // 3. Upload ke Catbox (Wajib ada fungsi uploadToCatbox di bawah)
+                    // 3. Upload ke Catbox
                     const imageUrl = await uploadToCatbox(mediaBuffer);
 
-                    // 4. Pakai Pollinations dengan Parameter Image
-                    // Format: url/prompt/...?image=URL_GAMBAR
+                    // 4. MANTRA TAMBAHAN: Paksa AI biar gak terlalu ngaco
+                    // Kita tambah "based on image, preserve original subject identity" di depan prompt user
+                    const modifiedPrompt = `based on image, preserve original subject identity, ${promptUser}`;
+
                     const randomSeed = Math.floor(Math.random() * 1000);
-                    const finalUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${randomSeed}&nologo=true&model=flux&image=${encodeURIComponent(imageUrl)}`;
+                    // Pakai model 'flux-realism' kadang lebih nurut daripada 'flux' biasa
+                    const finalUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(modifiedPrompt)}?width=1024&height=1024&seed=${randomSeed}&nologo=true&model=flux-realism&image=${encodeURIComponent(imageUrl)}`;
 
                     // 5. Kirim Hasil
                     await sock.sendMessage(from, { 
                         image: { url: finalUrl }, 
-                        caption: `Done` 
+                        caption: `🎨 *EDIT SUKSES*\nPrompt: ${promptUser}` 
                     }, { quoted: msg });
 
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
