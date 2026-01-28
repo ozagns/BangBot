@@ -4335,62 +4335,89 @@ _Video dikirim tanpa watermark!_`;
                 }
             }
 
-            // =========================================================
-            // COMMAND !ig
-            // =========================================================
+// =================================================
+            // FITUR INSTAGRAM (RECURSIVE FIX)
+            // =================================================
             if (cmd === "!ig" || cmd === "!instagram") {
-                const url = teks.replace(/!ig|!instagram/i, "").trim();
+                const url = teks.replace(cmd, "").trim();
+
                 if (!url) {
-                    await sock.sendMessage(from, { text: "Masukkan URL Instagram." });
-                    return;
+                    return sock.sendMessage(from, { text: `⚠️ Link Instagram-nya mana Bang?\nContoh: *${cmd} https://www.instagram.com/reel/xxxx/*` }, { quoted: msg });
                 }
 
-                const outputFolder = `./ig_${Date.now()}`;
-                const cookiesFile  = "instagram_cookies.txt"; // letakkan di folder yang sama dengan index.js
+                await sock.sendMessage(from, { react: { text: "⬇️", key: msg.key } });
+                await sock.sendMessage(from, { text: "⏳ Sedang mendownload dari Instagram... (Gallery-DL)" }, { quoted: msg });
 
-                const cmdGallery = `gallery-dl --cookies "${cookiesFile}" -d "${outputFolder}" "${url}"`;
-
-                console.log("[IG] Run gallery-dl:", cmdGallery);
-
-                exec(cmdGallery, async (err, stdout, stderr) => {
-                    if (err) {
-                        console.error("[IG] gallery-dl error:", err);
-                        console.error("[IG] stdout:", stdout);
-                        console.error("[IG] stderr:", stderr);
-                        await sock.sendMessage(from, { text: "Gagal download IG. Coba cek lagi cookies Instagram-nya." });
-                        return;
+                try {
+                    // Buat folder sementara unik
+                    const folderName = `ig_${Date.now()}`;
+                    const outputDir = path.join(__dirname, folderName);
+                    
+                    if (!fs.existsSync(outputDir)) {
+                        fs.mkdirSync(outputDir);
                     }
 
-                    console.log("[IG] stdout:", stdout);
-                    console.error("[IG] stderr:", stderr);
+                    // Jalankan Gallery-DL
+                    // Kita pakai execSync biar bot nungguin download selesai dulu baru lanjut
+                    const { execSync } = require("child_process");
+                    
+                    // Command download
+                    execSync(`gallery-dl --cookies "instagram_cookies.txt" -d "${outputDir}" "${url}"`);
 
-                    if (!fs.existsSync(outputFolder)) {
-                        await sock.sendMessage(from, { text: "Tidak ada media ditemukan." });
-                        return;
-                    }
+                    // --- FUNGSI PENCARI FILE RECURSIVE (PENCARI PINTAR) ---
+                    // Fungsi ini akan mencari file sampai ke folder terdalam
+                    const getAllFiles = (dirPath, arrayOfFiles) => {
+                        files = arrayOfFiles || [];
+                        const items = fs.readdirSync(dirPath);
 
-                    const files = fs.readdirSync(outputFolder)
-                        .filter(f => f.endsWith(".jpg") || f.endsWith(".jpeg") || f.endsWith(".png") || f.endsWith(".mp4"))
-                        .map(f => `${outputFolder}/${f}`);
-
-                    if (files.length === 0) {
-                        await sock.sendMessage(from, { text: "Tidak ada media ditemukan." });
-                        fs.rmSync(outputFolder, { recursive: true, force: true });
-                        return;
-                    }
-
-                    for (let file of files) {
-                        const isVideo = file.toLowerCase().endsWith(".mp4");
-                        const sendType = isVideo ? "video" : "image";
-
-                        await sock.sendMessage(from, {
-                            [sendType]: fs.readFileSync(file)
+                        items.forEach((item) => {
+                            if (fs.statSync(path.join(dirPath, item)).isDirectory()) {
+                                files = getAllFiles(path.join(dirPath, item), files);
+                            } else {
+                                files.push(path.join(dirPath, item));
+                            }
                         });
+
+                        return files;
+                    };
+
+                    // Cari semua file di folder output
+                    const foundFiles = getAllFiles(outputDir);
+
+                    // Filter cuma ambil file video/foto (buang file json/txt kalau ada)
+                    const mediaFiles = foundFiles.filter(file => 
+                        file.endsWith(".mp4") || file.endsWith(".jpg") || file.endsWith(".png") || file.endsWith(".jpeg")
+                    );
+
+                    if (mediaFiles.length === 0) {
+                        throw new Error("File media tidak ditemukan setelah download.");
                     }
 
-                    // Bersihkan folder setelah selesai
-                    fs.rmSync(outputFolder, { recursive: true, force: true });
-                });
+                    // Kirim semua file yang ditemukan
+                    for (let file of mediaFiles) {
+                        // Cek Video atau Foto
+                        if (file.endsWith(".mp4")) {
+                            await sock.sendMessage(from, { 
+                                video: fs.readFileSync(file), 
+                                caption: "✅ Instagram Downloader (Gallery-DL)" 
+                            }, { quoted: msg });
+                        } else {
+                            await sock.sendMessage(from, { 
+                                image: fs.readFileSync(file), 
+                                caption: "✅ Instagram Downloader (Gallery-DL)" 
+                            }, { quoted: msg });
+                        }
+                    }
+
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+
+                    // Bersihkan file sampah setelah dikirim
+                    fs.rmSync(outputDir, { recursive: true, force: true });
+
+                } catch (e) {
+                    console.error("IG Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Gagal download. Mungkin akun diprivate atau cookies kedaluwarsa." }, { quoted: msg });
+                }
             }
 
             // =================================================

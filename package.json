@@ -10,6 +10,7 @@
     "jimp": "^1.6.0",
     "link-preview-js": "^3.2.0",
     "mathjs": "^15.1.0",
+    "moment-timezone": "^0.6.0",
     "pdf-lib": "^1.17.1",
     "performance-now": "^2.1.0",
     "pino": "^10.1.0",
