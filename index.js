@@ -197,12 +197,9 @@ const activeConfess = {};
 const msgLog = {}; // Tempat nyimpen riwayat chat
 const NOMOR_OWNER = "628975800981@s.whatsapp.net"; // Ganti No WA Abang (pake @s.whatsapp.net)
 
-// --- CONFIG GEMINI AI (VERSI FINAL FLASH-001) ---
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-// Kita pakai satu model sakti ini buat Text & Gambar
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
+// --- CONFIG GROQ AI (PENYELAMAT) ---
+const Groq = require("groq-sdk");
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const moment = require('moment-timezone');
 const yts = require('yt-search');
@@ -4670,35 +4667,61 @@ _Video dikirim tanpa watermark!_`;
                 return;
             }
 
-            // --- FITUR GET RANDOM STICKER ---
-            if (cmd === "!gets" || cmd === "!randomsticker") {
-                try {
-                    // Menggunakan API meme publik sebagai sumber stiker random
-                    const { data } = await axios.get("https://meme-api.com/gimme");
-                    const imgUrl = data.url;
+// =================================================
+            // FITUR GET STICKER (SEARCH INDO)
+            // =================================================
+            if (cmd === "!gets" || cmd === "!caristiker") {
+                let query = teks.replace(cmd, "").trim();
 
-                    if (!imgUrl) return sock.sendMessage(from, { text: "Lagi gak ada stok stiker, Bang." }, { quoted: msg });
-
-                    const stamp = Date.now();
-                    const inPath = `./gets_in_${stamp}.jpg`;
-                    const outPath = `./gets_out_${stamp}.webp`;
-
-                    const imgRes = await axios.get(imgUrl, { responseType: "arraybuffer" });
-                    fs.writeFileSync(inPath, imgRes.data);
-
-                    // Convert jadi stiker
-                    await execPromise(`ffmpeg -y -i "${inPath}" -vf "scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000" -f webp "${outPath}"`);
-
-                    await sock.sendMessage(from, { sticker: fs.readFileSync(outPath) }, { quoted: msg });
-
-                    if (fs.existsSync(inPath)) fs.unlinkSync(inPath);
-                    if (fs.existsSync(outPath)) fs.unlinkSync(outPath);
-                    
-                } catch (err) {
-                    console.error("Gets Error:", err);
-                    await sock.sendMessage(from, { text: "Gagal mengambil stiker." }, { quoted: msg });
+                // 1. Kalau user gak ketik apa-apa, bot pilihkan topik Indo secara acak
+                if (!query) {
+                    const topikIndo = [
+                        "stiker pentol lucu", 
+                        "meme indonesia", 
+                        "stiker patrick sindiran", 
+                        "stiker kucing lucu", 
+                        "tuman",
+                        "stiker wa kocak"
+                    ];
+                    query = topikIndo[Math.floor(Math.random() * topikIndo.length)];
                 }
-                return;
+
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+
+                try {
+                    // 2. Cari Stiker pakai API Ryzendesu
+                    const { data } = await axios.get(`https://api.ryzendesu.com/api/search/sticker?query=${encodeURIComponent(query)}`);
+
+                    // 3. Cek hasil
+                    if (data && data.results && data.results.length > 0) {
+                        // Ambil satu stiker secara acak dari hasil pencarian
+                        const randomSticker = data.results[Math.floor(Math.random() * data.results.length)];
+                        
+                        // Link stiker biasanya ada di property 'url' atau 'media_url'
+                        const stickerUrl = randomSticker.url || randomSticker.media_url;
+
+                        // 4. Kirim Stiker
+                        await sock.sendMessage(from, { 
+                            sticker: { url: stickerUrl } 
+                        }, { quoted: msg });
+
+                        await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+
+                    } else {
+                        await sock.sendMessage(from, { text: "❌ Yah, stiker Indo-nya gak ketemu Bang." }, { quoted: msg });
+                    }
+
+                } catch (e) {
+                    console.error("Gets Error:", e);
+                    // Fallback kalau Ryzendesu error, coba cari di Giphy tapi tambah kata 'Indonesia'
+                    try {
+                         await sock.sendMessage(from, { 
+                            sticker: { url: `https://media.giphy.com/media/search?q=${query}+indonesia` } // Contoh simple
+                        }, { quoted: msg });
+                    } catch (err) {
+                        await sock.sendMessage(from, { text: "❌ Server stiker lagi ngambek Bang." }, { quoted: msg });
+                    }
+                }
             }
 
             // --- FITUR CEK STATUS SERVER ---
@@ -4926,84 +4949,89 @@ _Sedang mengambil audio..._`;
             }
 
 // =================================================
-            // FITUR CURHAT V3 (GEMINI FLASH)
+            // FITUR CURHAT V4 (GROQ AI - LLAMA 3)
             // =================================================
             if (cmd === "!curhat" || cmd === "!saran" || cmd === "!ai") {
                 const curhatan = teks.replace(cmd, "").trim();
 
                 if (!curhatan) {
-                    return sock.sendMessage(from, { text: `⚠️ Mau curhat apa Bang?\nContoh: *${cmd} Aku lagi galau*` }, { quoted: msg });
+                    return sock.sendMessage(from, { text: `⚠️ Mau curhat apa Bang?\nContoh: *${cmd} Aku lagi capek kerja*` }, { quoted: msg });
                 }
 
+                // React
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
-                
+
                 try {
-                    const prompt = `Kamu adalah 'BangBot', teman yang asik, gaul, lucu, dan bijak. Jawab curhatan user ini dengan bahasa santai (lo-gue).
-                    Curhatan User: "${curhatan}"`;
+                    // Panggil Groq (Model Llama 3 8B - Ringan & Pinter)
+                    const chatCompletion = await groq.chat.completions.create({
+                        messages: [
+                            {
+                                role: "system",
+                                content: "Kamu adalah 'BangBot', asisten WhatsApp yang asik, lucu, gaul (pakai lo-gue), dan solutif. Jawab singkat, padat, dan seperti teman dekat."
+                            },
+                            {
+                                role: "user",
+                                content: curhatan
+                            }
+                        ],
+                        model: "llama3-8b-8192", // Model Meta yang super ngebut
+                    });
 
-                    const result = await model.generateContent(prompt);
-                    const response = await result.response;
-                    const text = response.text();
+                    const response = chatCompletion.choices[0]?.message?.content || "Waduh, AI-nya bingung mau jawab apa.";
 
-                    await sock.sendMessage(from, { text: text }, { quoted: msg });
+                    await sock.sendMessage(from, { text: response }, { quoted: msg });
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
-                    console.error("Gemini Chat Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Maaf Bang, otak AI lagi error." }, { quoted: msg });
+                    console.error("Groq Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Server lagi sibuk Bang, coba lagi nanti." }, { quoted: msg });
                 }
             }
 
 // =================================================
-            // FITUR PENCARI RESEP MASAKAN
+            // FITUR RESEP MASAKAN (POWERED BY AI)
             // =================================================
             if (cmd === "!resep" || cmd === "!masak") {
-                const query = teks.replace(cmd, "").trim();
+                const masakan = teks.replace(cmd, "").trim();
 
-                if (!query) {
+                if (!masakan) {
                     return sock.sendMessage(from, { 
-                        text: `⚠️ Mau masak apa Bang?\nContoh: *${cmd} Nasi Goreng Spesial*` 
+                        text: `⚠️ Mau masak apa Chef?\nContoh: *${cmd} Rendang Sapi Padang*` 
                     }, { quoted: msg });
                 }
 
+                // 1. React 'Jam' 🕑
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
-                    // Panggil fungsi scraper yang kita buat di bawah tadi
-                    const resep = await cariResep(query);
+                    // Kita suruh AI yang mikir resepnya
+                    // Ganti 'groq' jadi 'model' kalau Abang pakai Gemini
+                    const chatCompletion = await groq.chat.completions.create({
+                        messages: [
+                            {
+                                role: "system",
+                                content: "Kamu adalah Chef Profesional bintang 5. Tugasmu memberikan resep masakan yang enak, detail, dan mudah diikuti. Format jawaban: 'BAHAN-BAHAN' lalu 'CARA MEMBUAT'."
+                            },
+                            {
+                                role: "user",
+                                content: `Berikan resep lengkap untuk membuat: ${masakan}`
+                            }
+                        ],
+                        model: "llama3-8b-8192", 
+                    });
 
-                    if (!resep) {
-                        return sock.sendMessage(from, { text: "❌ Resep tidak ditemukan. Coba kata kunci lain (misal: Ayam Bakar)." }, { quoted: msg });
-                    }
+                    const resep = chatCompletion.choices[0]?.message?.content;
 
-                    // Susun Pesan
-                    const captionResep = 
-`*Judul:* ${resep.judul}
-*Waktu:* ${resep.waktu}
-*Porsi:* ${resep.porsi}
+                    // 2. Kirim Resep
+                    await sock.sendMessage(from, { 
+                        text: `${resep}` 
+                    }, { quoted: msg });
 
-*BAHAN-BAHAN:*
-${resep.bahan}
-
-*CARA MEMBUAT:*
-${resep.langkah}
-
-*Sumber:* ${resep.sumber}`;
-
-                    // Kirim Gambar + Caption
-                    if (resep.image) {
-                        await sock.sendMessage(from, { 
-                            image: { url: resep.image }, 
-                            caption: captionResep 
-                        }, { quoted: msg });
-                    } else {
-                        // Kalau gak ada gambar, kirim teks aja
-                        await sock.sendMessage(from, { text: captionResep }, { quoted: msg });
-                    }
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
-                    console.log(e);
-                    await sock.sendMessage(from, { text: "Gagal mengambil resep." }, { quoted: msg });
+                    console.error("Resep AI Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Dapur lagi kebakaran Bang (Error). Coba menu lain." }, { quoted: msg });
                 }
             }
 
@@ -5079,7 +5107,7 @@ _Note: Ini cuma ramalan/arti kata, jangan baper ya Bang!_`;
             }
 
 // =================================================
-            // FITUR TO ANIME (WIDIPE - GRATIS)
+            // FITUR TO ANIME (SERVER BARU: RYZENDESU)
             // =================================================
             if (cmd === "!toanime" || cmd === "!jadianime") {
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
@@ -5089,11 +5117,9 @@ _Note: Ini cuma ramalan/arti kata, jangan baper ya Bang!_`;
                     return sock.sendMessage(from, { text: "⚠️ Kirim/Reply foto muka orang dengan caption *!toanime*" }, { quoted: msg });
                 }
 
-                // React Baru 🕑
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
-                    // 1. Download Gambar dari WA
                     let mediaBuffer;
                     if (isQuotedImage) {
                         mediaBuffer = await downloadMediaMessage(
@@ -5103,16 +5129,14 @@ _Note: Ini cuma ramalan/arti kata, jangan baper ya Bang!_`;
                         mediaBuffer = await downloadMediaMessage(msg, 'buffer', {});
                     }
 
-                    // 2. Upload ke Internet (Catbox) biar punya Link
                     const imageUrl = await uploadToCatbox(mediaBuffer);
-
-                    // 3. Panggil API Gratis (Widipe)
-                    const apiUrl = `https://widipe.com/toanime?url=${imageUrl}`;
                     
-                    // Langsung kirim hasilnya
+                    // Panggil API Ryzendesu
+                    const apiUrl = `https://api.ryzendesu.com/api/ai/toanime?url=${imageUrl}`;
+                    
                     await sock.sendMessage(from, { 
                         image: { url: apiUrl }, 
-                        caption: "Done Bang" 
+                        caption: "🎨 *TO ANIME SUCCESS*" 
                     }, { quoted: msg });
 
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
@@ -5123,18 +5147,17 @@ _Note: Ini cuma ramalan/arti kata, jangan baper ya Bang!_`;
                 }
             }
 
+// =================================================
+            // FITUR HD / REMINI (SERVER BARU: RYZENDESU)
             // =================================================
-            // FITUR HD / REMINI (PENGGANTI !EDIT)
-            // =================================================
-            if (cmd === "!hd" || cmd === "!remini") {
+            if (cmd === "!hd" || cmd === "!remini" || cmd === "!edit") {
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
                 const isImage = msg.message.imageMessage;
 
                 if (!isQuotedImage && !isImage) {
-                    return sock.sendMessage(from, { text: "⚠️ Kirim/Reply foto burik dengan caption *!hd*" }, { quoted: msg });
+                    return sock.sendMessage(from, { text: `⚠️ Kirim/Reply foto burik dengan caption *${cmd}*` }, { quoted: msg });
                 }
 
-                // React Baru 🕑
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
@@ -5151,19 +5174,20 @@ _Note: Ini cuma ramalan/arti kata, jangan baper ya Bang!_`;
                     // 2. Upload ke Catbox
                     const imageUrl = await uploadToCatbox(mediaBuffer);
 
-                    // 3. Panggil API Gratis (Widipe Remini)
-                    const apiUrl = `https://widipe.com/remini?url=${imageUrl}`;
+                    // 3. Panggil API Ryzendesu (Pengganti Widipe)
+                    const apiUrl = `https://api.ryzendesu.com/api/ai/remini?url=${imageUrl}`;
 
+                    // 4. Kirim Hasil
                     await sock.sendMessage(from, { 
                         image: { url: apiUrl }, 
-                        caption: "Done Bang" 
+                        caption: "✨ *HD SUKSES*" 
                     }, { quoted: msg });
 
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
                     console.error("HD Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Gagal HD-in foto. Server lagi sibuk." }, { quoted: msg });
+                    await sock.sendMessage(from, { text: "❌ Server HD lagi down Bang, coba lagi nanti." }, { quoted: msg });
                 }
             }
 
@@ -9869,21 +9893,21 @@ Selesai Bang.`
             }
 
 // =================================================
-            // FITUR HAPUS BACKGROUND (AI REPLICATE)
+            // FITUR REMOVE BACKGROUND (SERVER BARU: RYZENDESU)
             // =================================================
-            if (cmd === "!removebg" || cmd === "!nobg") {
-                // Cek apakah ada gambar?
+            if (cmd === "!removebg" || cmd === "!hapusbg" || cmd === "!png") {
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
                 const isImage = msg.message.imageMessage;
 
                 if (!isQuotedImage && !isImage) {
-                    return sock.sendMessage(from, { text: "⚠️ Kirim/Reply foto dengan caption *!removebg*" }, { quoted: msg });
+                    return sock.sendMessage(from, { text: `⚠️ Kirim/Reply foto dengan caption *${cmd}*` }, { quoted: msg });
                 }
 
+                // 1. React 'Jam' 🕑
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
-                    // 1. Download Gambar
+                    // 2. Download Gambar
                     let mediaBuffer;
                     if (isQuotedImage) {
                         mediaBuffer = await downloadMediaMessage(
@@ -9893,40 +9917,25 @@ Selesai Bang.`
                         mediaBuffer = await downloadMediaMessage(msg, 'buffer', {});
                     }
 
-                    // 2. Convert ke Base64 (Format yang diminta Replicate)
-                    const base64Image = `data:image/jpeg;base64,${mediaBuffer.toString('base64')}`;
+                    // 3. Upload ke Catbox (WAJIB ADA FUNGSI uploadToCatbox DI BAWAH)
+                    const imageUrl = await uploadToCatbox(mediaBuffer);
 
-                    // 3. Kirim ke Replicate (Model: cjwbw/rembg)
-                    // Model ini khusus buat hapus background, hasilnya rapi banget
-                    const output = await replicate.run(
-                        "cjwbw/rembg:fb8af171cfa1616ddcf1242c093f9c46bcada5ad4cf6f2fbe8b81b330ec5c003",
-                        {
-                            input: {
-                                image: base64Image
-                            }
-                        }
-                    );
+                    // 4. Panggil API Ryzendesu (Remove BG)
+                    const apiUrl = `https://api.ryzendesu.com/api/ai/removebg?url=${imageUrl}`;
 
-                    // Output berupa URL gambar PNG transparan
-                    if (output) {
-                        // 4. Kirim hasilnya ke User (Sebagai Dokumen biar transparan-nya terjaga)
-                        await sock.sendMessage(from, { 
-                            document: { url: output }, 
-                            mimetype: "image/png",
-                            fileName: "no-bg.png",
-                            caption: "Sukses Hapus Background!"
-                        }, { quoted: msg });
-                        
-                        // Opsional: Kirim sebagai Sticker juga kalau mau langsung jadi stiker
-                        // (Kalau abang mau fitur !sticker nobg, bisa integrasikan logika ini ke sana)
-                        
-                    } else {
-                        throw new Error("Output AI kosong.");
-                    }
+                    // 5. Kirim Hasil (Dikirim sebagai dokumen biar transparan-nya awet)
+                    await sock.sendMessage(from, { 
+                        document: { url: apiUrl }, 
+                        mimetype: "image/png",
+                        fileName: "removebg-bangbot.png",
+                        caption: "" 
+                    }, { quoted: msg });
+
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
                     console.error("RemoveBG Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Gagal menghapus background. Pastikan objek di foto terlihat jelas." }, { quoted: msg });
+                    await sock.sendMessage(from, { text: "❌ Gagal menghapus background. Pastikan objeknya jelas atau coba lagi nanti." }, { quoted: msg });
                 }
             }
 
