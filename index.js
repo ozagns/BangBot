@@ -30,7 +30,7 @@ const https = require("https");
 const fs = require('fs');
 const os = require('os'); // Bisa taruh di atas file juga
 const path = require('path');
-const { ytmp3 } = require('btch-downloader');
+const { youtube } = require('btch-downloader');
 
 function listFilesRecursive(dir) {
   let results = [];
@@ -4869,7 +4869,7 @@ Bot berjalan lancar di PC Abang!`;
             }
 
 // =================================================
-            // FITUR PLAY MUSIC V7 (THE AGGREGATOR)
+            // FITUR PLAY MUSIC V7.1 (FIXED + COBALT MIRROR)
             // =================================================
             if (cmd === "!play" || cmd === "!lagu" || cmd === "!song") {
                 const query = teks.replace(cmd, "").trim();
@@ -4899,24 +4899,64 @@ Bot berjalan lancar di PC Abang!`;
 ⏱️ *Durasi:* ${video.timestamp}
 🔗 *Link:* ${video.url}
 
-_Sedang mengambil audio via Scraper Aggregator..._`;
+_Sedang mengambil audio..._`;
 
                     await sock.sendMessage(from, { 
                         image: { url: video.thumbnail }, 
                         caption: infoLagu 
                     }, { quoted: msg });
 
-                    // 2. DOWNLOAD PAKAI BTCH-DOWNLOADER
-                    // Ini akan mencoba berbagai sumber otomatis (y2mate, dll)
-                    const data = await ytmp3(video.url);
+                    let audioUrl = "";
 
-                    if (!data || !data.audio) {
-                        throw new Error("Link audio tidak ditemukan oleh scraper.");
+                    // --- CARA 1: BTCH DOWNLOADER (FIXED) ---
+                    try {
+                        console.log("Mencoba BTCH...");
+                        const data = await youtube(video.url);
+                        if (data && data.mp3) {
+                            audioUrl = data.mp3;
+                            console.log("BTCH Sukses!");
+                        }
+                    } catch (e) {
+                        console.log("BTCH Gagal, lanjut backup...");
+                    }
+
+                    // --- CARA 2: COBALT MIRROR (BACKUP KUAT) ---
+                    // Karena server official cobalt mati, kita pakai mirror (server orang lain)
+                    if (!audioUrl) {
+                        try {
+                            console.log("Mencoba Cobalt Mirror...");
+                            const cobaltBody = {
+                                url: video.url,
+                                vCodec: "h264",
+                                vQuality: "720",
+                                aFormat: "mp3",
+                                isAudioOnly: true
+                            };
+                            
+                            // Mirror yang biasanya hidup:
+                            const mirrorUrl = "https://cobalt.smartlabel.uk/api/json"; 
+                            
+                            const { data: res } = await axios.post(mirrorUrl, cobaltBody, {
+                                headers: {
+                                    "Accept": "application/json",
+                                    "Content-Type": "application/json",
+                                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+                                }
+                            });
+
+                            if (res.url) audioUrl = res.url;
+                        } catch (e) {
+                            console.log("Cobalt Mirror Gagal.");
+                        }
+                    }
+
+                    if (!audioUrl) {
+                        throw new Error("Semua server downloader gagal.");
                     }
 
                     // 3. KIRIM HASIL
                     await sock.sendMessage(from, { 
-                        audio: { url: data.audio }, 
+                        audio: { url: audioUrl }, 
                         mimetype: 'audio/mp4', 
                         ptt: false, 
                         fileName: `${video.title}.mp3`
@@ -4925,10 +4965,10 @@ _Sedang mengambil audio via Scraper Aggregator..._`;
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
-                    console.error("Play V7 Error:", e);
-                    // FALLBACK TERAKHIR BANGET: KIRIM LINK
+                    console.error("Play V7.1 Error:", e);
+                    // FALLBACK LINK
                     await sock.sendMessage(from, { 
-                        text: `❌ *Gagal Download Audio*\n\nYouTube memblokir akses server bot. Silakan download manual di sini:\n${query.includes('http') ? query : 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query)}` 
+                        text: `❌ *Gagal Download Audio*\n\nServer lagi down parah Bang. Download manual aja:\n${query.includes('http') ? query : 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query)}` 
                     }, { quoted: msg });
                 }
             }
