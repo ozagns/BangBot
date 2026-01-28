@@ -4792,18 +4792,18 @@ Bot berjalan lancar di PC Abang!`;
             }
 
 // =================================================
-            // FITUR EDIT IMAGE VIA PROMPT (POLLINATIONS IMG2IMG - FIXED IDENTITY)
+            // FITUR SMART EDIT (GEMINI VISION + POLLINATIONS)
             // =================================================
             if (cmd === "!edit" || cmd === "!ubah") {
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
                 const isImage = msg.message.imageMessage;
-                const promptUser = teks.replace(cmd, "").trim();
+                const userCommand = teks.replace(cmd, "").trim();
 
                 if (!isQuotedImage && !isImage) {
                     return sock.sendMessage(from, { text: `⚠️ Kirim/Reply foto dengan caption perintah.\nContoh: *${cmd} rambut jadi merah*` }, { quoted: msg });
                 }
 
-                if (!promptUser) {
+                if (!userCommand) {
                     return sock.sendMessage(from, { text: "⚠️ Mau diedit jadi apa Bang? Tulis perintahnya." }, { quoted: msg });
                 }
 
@@ -4811,7 +4811,7 @@ Bot berjalan lancar di PC Abang!`;
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
-                    // 2. Download Gambar Asli
+                    // 2. Download Gambar
                     let mediaBuffer;
                     if (isQuotedImage) {
                         mediaBuffer = await downloadMediaMessage(
@@ -4821,28 +4821,43 @@ Bot berjalan lancar di PC Abang!`;
                         mediaBuffer = await downloadMediaMessage(msg, 'buffer', {});
                     }
 
-                    // 3. Upload ke Catbox
+                    // --- TAHAP 1: GEMINI MELIHAT GAMBAR ---
+                    // Kita suruh Gemini mendeskripsikan fisik orang di foto biar gak salah orang
+                    const imagePart = {
+                        inlineData: {
+                            data: mediaBuffer.toString("base64"),
+                            mimeType: "image/jpeg"
+                        }
+                    };
+
+                    const visionPrompt = "Describe the main subject in this photo in English strictly for image generation prompt. Focus on: Gender, Age, Ethnicity, Hair style, Facial features, and Clothing. Keep it concise (1 sentence).";
+                    
+                    // Pastikan variabel 'model' (Gemini) sudah didefinisikan di atas
+                    const resultVis = await model.generateContent([visionPrompt, imagePart]);
+                    const description = resultVis.response.text().trim();
+
+                    // --- TAHAP 2: GABUNGKAN DESKRIPSI + PERINTAH USER ---
+                    // Gabungan: "Pria Indonesia kemeja putih (dari Gemini)" + "Rambut jadi merah (dari User)"
+                    const finalPrompt = `((${description})), modify to: ${userCommand}, preserve original face identity, high quality, photorealistic`;
+
+                    // 3. Upload ke Catbox (Buat Pollinations)
                     const imageUrl = await uploadToCatbox(mediaBuffer);
 
-                    // 4. MANTRA TAMBAHAN: Paksa AI biar gak terlalu ngaco
-                    // Kita tambah "based on image, preserve original subject identity" di depan prompt user
-                    const modifiedPrompt = `based on image, preserve original subject identity, ${promptUser}`;
-
+                    // 4. Generate pakai Pollinations (Model Flux Realism)
                     const randomSeed = Math.floor(Math.random() * 1000);
-                    // Pakai model 'flux-realism' kadang lebih nurut daripada 'flux' biasa
-                    const finalUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(modifiedPrompt)}?width=1024&height=1024&seed=${randomSeed}&nologo=true&model=flux-realism&image=${encodeURIComponent(imageUrl)}`;
+                    const finalUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=1024&height=1024&seed=${randomSeed}&nologo=true&model=flux-realism&image=${encodeURIComponent(imageUrl)}`;
 
                     // 5. Kirim Hasil
                     await sock.sendMessage(from, { 
                         image: { url: finalUrl }, 
-                        caption: `🎨 *EDIT SUKSES*\nPrompt: ${promptUser}` 
+                        caption: `🎨 *EDIT SUKSES*\n\n📝 **Analisa AI:** "${description}"\n✨ **Edit:** "${userCommand}"` 
                     }, { quoted: msg });
 
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
-                    console.error("Edit Prompt Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Gagal mengedit. Server lagi sibuk." }, { quoted: msg });
+                    console.error("Smart Edit Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Gagal edit Bang. Server lagi sibuk." }, { quoted: msg });
                 }
             }
 
@@ -5152,7 +5167,7 @@ _Note: Ini cuma ramalan/arti kata, jangan baper ya Bang!_`;
 // =================================================
             // FITUR HD / REMINI (SERVER BARU: RYZENDESU)
             // =================================================
-            if (cmd === "!hd" || cmd === "!remini" || cmd === "!edit") {
+            if (cmd === "!hd" || cmd === "!remini") {
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
                 const isImage = msg.message.imageMessage;
 
@@ -6154,7 +6169,7 @@ ${bar}
                     // -font "${fontName}" : Menggunakan font custom
                     // -fill ${inkColor}   : Mengubah warna tinta biar gak hitam pekat komputer
                     
-                    const command = `magick "${paperPath}" -resize ${paperWidth}x -font "${fontName}" ( -size ${textWidth}x${textHeight} -background none -fill ${inkColor} -pointsize ${fontSize} -interline-spacing ${lineSpacing} caption:"${text}" ) -geometry +${marginLeft}+${marginTop} -composite "${output}"`;
+                    const command = `magick "${paperPath}" -resize ${paperWidth}x -font "${fontName}" \\( -size ${textWidth}x${textHeight} -background none -fill ${inkColor} -pointsize ${fontSize} -interline-spacing ${lineSpacing} caption:"${text}" \\) -geometry +${marginLeft}+${marginTop} -composite "${output}"`;
 
                     await execPromise(command);
 
