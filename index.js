@@ -4868,7 +4868,7 @@ Bot berjalan lancar di PC Abang!`;
             }
 
 // =================================================
-            // FITUR PLAY MUSIC V3 (STABIL)
+            // FITUR PLAY MUSIC V4 (3 LAPIS SERVER)
             // =================================================
             if (cmd === "!play" || cmd === "!lagu" || cmd === "!song") {
                 const query = teks.replace(cmd, "").trim();
@@ -4879,7 +4879,8 @@ Bot berjalan lancar di PC Abang!`;
                     }, { quoted: msg });
                 }
 
-                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+                await sock.sendMessage(from, { react: { text: "🔍", key: msg.key } });
+                await sock.sendMessage(from, { text: `⏳ Sedang mencari & mendownload lagu: *"${query}"*...` }, { quoted: msg });
 
                 try {
                     // 1. CARI LAGU DI YOUTUBE
@@ -4892,12 +4893,14 @@ Bot berjalan lancar di PC Abang!`;
 
                     // Tampilkan Info
                     const infoLagu = 
-`*Judul:* ${video.title}
-*Durasi:* ${video.timestamp}
-*Views:* ${video.views}
-*Link:* ${video.url}
+`🎵 *MUSIC FOUND* 🎵
 
-_Sedang mengambil audio..._`;
+📌 *Judul:* ${video.title}
+⏱️ *Durasi:* ${video.timestamp}
+👀 *Views:* ${video.views}
+🔗 *Link:* ${video.url}
+
+_Sedang mencoba 3 server download..._`;
 
                     await sock.sendMessage(from, { 
                         image: { url: video.thumbnail }, 
@@ -4906,35 +4909,48 @@ _Sedang mengambil audio..._`;
 
                     let audioUrl = "";
 
-                    // 2. COBA DOWNLOAD (SERVER 1: RYZENDESU)
-                    try {
-                        const apiUrl = `https://api.ryzendesu.com/api/downloader/ytmp3?url=${video.url}`;
-                        const { data: res } = await axios.get(apiUrl);
-                        if (res.url) {
-                            audioUrl = res.url;
-                        }
-                    } catch (err1) {
-                        console.log("Server 1 Gagal, mencoba Server 2...");
-                    }
-
-                    // 3. JIKA SERVER 1 GAGAL, COBA (SERVER 2: WIDIPE)
+                    // --- SERVER 1: VREDEN ---
                     if (!audioUrl) {
                         try {
-                            const apiUrl2 = `https://widipe.com/download/ytdl?url=${video.url}`;
-                            const { data: res2 } = await axios.get(apiUrl2);
-                            if (res2.result && res2.result.mp3) {
-                                audioUrl = res2.result.mp3;
+                            console.log("Mencoba Server 1 (Vreden)...");
+                            const { data: res1 } = await axios.get(`https://api.vreden.web.id/api/ytmp3?url=${video.url}`);
+                            if (res1.result && res1.result.url) {
+                                audioUrl = res1.result.url;
+                                console.log("Server 1 Sukses!");
                             }
-                        } catch (err2) {
-                            console.log("Server 2 Gagal.");
-                        }
+                        } catch (e) { console.log("Server 1 Gagal."); }
                     }
 
+                    // --- SERVER 2: SIPUTZX ---
                     if (!audioUrl) {
-                        throw new Error("Semua server downloader sibuk/gagal.");
+                        try {
+                            console.log("Mencoba Server 2 (Siputzx)...");
+                            const { data: res2 } = await axios.get(`https://api.siputzx.my.id/api/d/ytmp3?url=${video.url}`);
+                            if (res2.data && res2.data.dl) {
+                                audioUrl = res2.data.dl;
+                                console.log("Server 2 Sukses!");
+                            }
+                        } catch (e) { console.log("Server 2 Gagal."); }
                     }
 
-                    // 4. KIRIM AUDIO
+                    // --- SERVER 3: WIDIPE (BACKUP TERAKHIR) ---
+                    if (!audioUrl) {
+                        try {
+                            console.log("Mencoba Server 3 (Widipe)...");
+                            const { data: res3 } = await axios.get(`https://widipe.com/download/ytdl?url=${video.url}`);
+                            if (res3.result && res3.result.mp3) {
+                                audioUrl = res3.result.mp3;
+                                console.log("Server 3 Sukses!");
+                            }
+                        } catch (e) { console.log("Server 3 Gagal."); }
+                    }
+
+                    // JIKA SEMUA GAGAL
+                    if (!audioUrl) {
+                        throw new Error("Semua server sibuk.");
+                    }
+
+                    // KIRIM AUDIO
                     await sock.sendMessage(from, { 
                         audio: { url: audioUrl }, 
                         mimetype: 'audio/mp4', 
@@ -4946,7 +4962,10 @@ _Sedang mengambil audio..._`;
 
                 } catch (e) {
                     console.error("Play Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Gagal download lagu. Coba cari judul yang lebih spesifik atau durasi lebih pendek." }, { quoted: msg });
+                    // FALLBACK: Kalau audio gagal total, kirim link-nya aja biar user download sendiri
+                    await sock.sendMessage(from, { 
+                        text: `❌ *Gagal mengirim audio.* Server lagi pada down Bang.\n\nSilakan klik link ini buat dengar manual:\n${query.includes('http') ? query : 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query)}` 
+                    }, { quoted: msg });
                 }
             }
 
