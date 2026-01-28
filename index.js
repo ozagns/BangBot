@@ -362,8 +362,8 @@ const tebakgambarSessions = new Map(); // key: from (jid), value: { answer, hint
 const caklontongSessions  = new Map(); // key: from (jid), value: { answer, explain, tries }
 const family100Sessions   = new Map(); // key: from (jid), value: { question, answers, tries }
 
-// BANK SOAL GAME
 const TEBAK_KATA_BANK = [
+    // --- YANG SUDAH ADA (TETAP) ---
     {
         answer: "kopi",
         hint: "Minuman hitam, pahit, sering diminum pagi hari."
@@ -372,95 +372,930 @@ const TEBAK_KATA_BANK = [
         answer: "bintang",
         hint: "Bersinar di langit malam."
     },
+    
+    // --- TAMBAHAN BARU (BANYAK) ---
     {
-        answer: "motor",
-        hint: "Kendaraan roda dua, wajib pakai helm."
+        answer: "gajah",
+        hint: "Hewan sangat besar, punya belalai dan gading."
     },
     {
-        answer: "pulpen",
-        hint: "Alat tulis dengan tinta."
+        answer: "kucing",
+        hint: "Hewan peliharaan berbulu, bunyinya meong."
     },
     {
-        answer: "jakarta",
-        hint: "Pernah menjadi ibu kota Indonesia."
+        answer: "matahari",
+        hint: "Pusat tata surya, terbit di timur."
     },
     {
-        answer: "teh",
-        hint: "Bisa manis, bisa tawar, sering disajikan hangat."
+        answer: "bulan",
+        hint: "Satelit alami bumi, muncul malam hari."
     },
     {
-        answer: "lampu",
-        hint: "Membantu menerangi ruangan ketika gelap."
+        answer: "komputer",
+        hint: "Alat elektronik canggih untuk mengetik dan olah data."
+    },
+    {
+        answer: "sepatu",
+        hint: "Alas kaki yang dipakai saat sekolah atau kerja."
+    },
+    {
+        answer: "nasi",
+        hint: "Makanan pokok orang Indonesia, asalnya dari padi."
+    },
+    {
+        answer: "sate",
+        hint: "Daging dipotong kecil, ditusuk, lalu dibakar."
+    },
+    {
+        answer: "rendang",
+        hint: "Makanan khas Padang, daging sapi bumbu rempah."
+    },
+    {
+        answer: "polisi",
+        hint: "Profesi penegak hukum, seragamnya cokelat."
+    },
+    {
+        answer: "guru",
+        hint: "Pahlawan tanpa tanda jasa, mengajar di sekolah."
+    },
+    {
+        answer: "dokter",
+        hint: "Bekerja di rumah sakit, menyembuhkan orang sakit."
+    },
+    {
+        answer: "pantai",
+        hint: "Wisata alam berpasir di tepi laut."
+    },
+    {
+        answer: "gunung",
+        hint: "Dataran tinggi menjulang, kadang meletus."
+    },
+    {
+        answer: "mobil",
+        hint: "Kendaraan roda empat, butuh bensin."
+    },
+    {
+        answer: "pesawat",
+        hint: "Transportasi udara, punya sayap tapi bukan burung."
+    },
+    {
+        answer: "jam",
+        hint: "Alat penunjuk waktu."
+    },
+    {
+        answer: "kunci",
+        hint: "Pasangan gembok, buat buka pintu."
+    },
+    {
+        answer: "buku",
+        hint: "Jendela dunia, lembaran kertas dijilid."
+    },
+    {
+        answer: "tas",
+        hint: "Wadah untuk membawa barang di punggung atau bahu."
+    },
+    {
+        answer: "air",
+        hint: "Benda cair, jernih, vital buat kehidupan."
+    },
+    {
+        answer: "api",
+        hint: "Panas, menyala, jangan dimainin nanti ngompol."
+    },
+    {
+        answer: "cermin",
+        hint: "Benda yang bisa memantulkan bayangan kita."
+    },
+    {
+        answer: "kasur",
+        hint: "Tempat paling nyaman buat rebahan."
+    },
+    {
+        answer: "bantal",
+        hint: "Teman setia kepala saat tidur."
+    },
+    {
+        answer: "sendok",
+        hint: "Alat makan, pasangannya garpu."
+    },
+    {
+        answer: "piring",
+        hint: "Wadah tempat menaruh makanan saat makan."
+    },
+    {
+        answer: "gelas",
+        hint: "Wadah untuk minum."
+    },
+    {
+        answer: "hujan",
+        hint: "Air yang turun dari langit."
+    },
+    {
+        answer: "pelangi",
+        hint: "Lengkungan warna-warni indah setelah hujan."
+    },
+    {
+        answer: "semut",
+        hint: "Serangga kecil, suka gula, gotong royong."
+    },
+    {
+        answer: "nyamuk",
+        hint: "Serangga kecil penghisap darah, bikin bentol."
+    },
+    {
+        answer: "kambing",
+        hint: "Hewan kurban, bunyinya mbeee."
+    },
+    {
+        answer: "ayam",
+        hint: "Unggas berkokok di pagi hari."
+    },
+    {
+        answer: "ular",
+        hint: "Reptil panjang tidak berkaki, berbisa."
+    },
+    {
+        answer: "ikan",
+        hint: "Hewan hidup di air, bernapas pakai insang."
+    },
+    {
+        answer: "internet",
+        hint: "Jaringan dunia maya, butuh kuota."
+    },
+    {
+        answer: "kulkas",
+        hint: "Lemari pendingin penyimpan makanan."
+    },
+    {
+        answer: "televisi",
+        hint: "Kotak bergambar dan bersuara untuk hiburan."
+    },
+    {
+        answer: "kipas",
+        hint: "Baling-baling berputar bikin adem."
+    },
+    {
+        answer: "topi",
+        hint: "Aksesoris pelindung kepala dari panas."
+    },
+    {
+        answer: "payung",
+        hint: "Pelindung dari hujan, sedia sebelum hujan."
+    },
+    {
+        answer: "roti",
+        hint: "Makanan berbahan tepung, biasanya dioles selai."
+    },
+    {
+        answer: "bakso",
+        hint: "Bola daging berkuah panas."
+    },
+    {
+        answer: "susu",
+        hint: "Minuman sehat warna putih dari sapi."
+    },
+    {
+        answer: "jeruk",
+        hint: "Buah warna oranye, kaya vitamin C."
+    },
+    {
+        answer: "pisang",
+        hint: "Buah kuning melengkung kesukaan monyet."
+    },
+    {
+        answer: "kelapa",
+        hint: "Buah keras, airnya segar, isinya putih."
+    },
+    {
+        answer: "indonesia",
+        hint: "Negara kepulauan terbesar, tanah air kita."
+    },
+    {
+        answer: "monas",
+        hint: "Tugu berlapis emas di Jakarta."
     }
 ];
 
 const TEBAK_GAMBAR_BANK = [
+    // --- CONTOH YANG LAMA ---
     {
         question: "🍎📱",
         answer: "iphone",
         hint: "Buah + HP populer."
     },
+    
+    // --- TAMBAHAN BARU (BANYAK) ---
     {
-        question: "🚌🏫",
-        answer: "sekolah",
-        hint: "Transport + tempat belajar."
+        question: "🕷️👨",
+        answer: "spiderman",
+        hint: "Superhero laba-laba."
     },
     {
-        question: "🍔🍟🥤",
-        answer: "fast food",
-        hint: "Paket makanan cepat saji."
+        question: "🦁👑",
+        answer: "lion king",
+        hint: "Film singa yang jadi raja hutan."
+    },
+    {
+        question: "🦇👨",
+        answer: "batman",
+        hint: "Superhero manusia kelelawar."
+    },
+    {
+        question: "🐜👨",
+        answer: "antman",
+        hint: "Superhero manusia semut."
+    },
+    {
+        question: "👓📖",
+        answer: "kutu buku",
+        hint: "Sebutan untuk orang yang hobi baca."
+    },
+    {
+        question: "🐍🪜",
+        answer: "ular tangga",
+        hint: "Permainan papan klasik."
+    },
+    {
+        question: "🐮🥛",
+        answer: "susu sapi",
+        hint: "Minuman sehat dari hewan melenguh."
+    },
+    {
+        question: "🐝🍯",
+        answer: "madu",
+        hint: "Cairan manis dari lebah."
+    },
+    {
+        question: "🚢🧊",
+        answer: "titanic",
+        hint: "Kapal besar yang menabrak gunung es."
+    },
+    {
+        question: "👻🏠",
+        answer: "rumah hantu",
+        hint: "Tempat seram ada setannya."
+    },
+    {
+        question: "👮‍♂️💤",
+        answer: "polisi tidur",
+        hint: "Gundukan di jalan biar pelan."
+    },
+    {
+        question: "📸👰",
+        answer: "foto pengantin",
+        hint: "Dokumentasi saat nikahan."
+    },
+    {
+        question: "📅🔴",
+        answer: "tanggal merah",
+        hint: "Hari libur di kalender."
+    },
+    {
+        question: "🥊🐔",
+        answer: "adu ayam",
+        hint: "Pertarungan dua unggas."
+    },
+    {
+        question: "🚪🏃",
+        answer: "kabur",
+        hint: "Lari lewat pintu."
+    },
+    {
+        question: "🛌💤",
+        answer: "tidur siang",
+        hint: "Istirahat di tengah hari."
+    },
+    {
+        question: "🏫🎒",
+        answer: "anak sekolah",
+        hint: "Pergi belajar bawa tas."
+    },
+    {
+        question: "💉👨‍⚕️",
+        answer: "suntik",
+        hint: "Alat dokter yang tajam."
+    },
+    {
+        question: "💇‍♂️💈",
+        answer: "potong rambut",
+        hint: "Merapikan kepala di barbershop."
+    },
+    {
+        question: "🌧️🌈",
+        answer: "pelangi",
+        hint: "Muncul indah setelah hujan."
+    },
+    {
+        question: "🧛‍♂️🩸",
+        answer: "drakula",
+        hint: "Hantu penghisap darah."
+    },
+    {
+        question: "🧜‍♀️🌊",
+        answer: "putri duyung",
+        hint: "Manusia setengah ikan."
+    },
+    {
+        question: "🧞‍♂️💡",
+        answer: "jin",
+        hint: "Keluar dari lampu ajaib."
+    },
+    {
+        question: "🧟🧠",
+        answer: "zombie",
+        hint: "Mayat hidup suka makan otak."
+    },
+    {
+        question: "💍💎",
+        answer: "berlian",
+        hint: "Perhiasan sangat mahal dan keras."
+    },
+    {
+        question: "🍿🎬",
+        answer: "bioskop",
+        hint: "Nonton film layar lebar sambil makan jagung."
+    },
+    {
+        question: "🎤🎶",
+        answer: "karaoke",
+        hint: "Menyanyi pakai mic."
+    },
+    {
+        question: "🎮🕹️",
+        answer: "video game",
+        hint: "Permainan elektronik."
     },
     {
         question: "⚽🥅",
-        answer: "sepak bola",
-        hint: "Olahraga populer di lapangan rumput."
+        answer: "gol",
+        hint: "Bola masuk gawang."
     },
     {
-        question: "🚗💨",
-        answer: "ngebut",
-        hint: "Mobil dengan kecepatan tinggi."
+        question: "🏀🗑️",
+        answer: "basket",
+        hint: "Bola masuk keranjang."
+    },
+    {
+        question: "🏸🐓",
+        answer: "bulu tangkis",
+        hint: "Olahraga tepok bulu angsa."
+    },
+    {
+        question: "🎣🐟",
+        answer: "mancing",
+        hint: "Menangkap ikan dengan kail."
+    },
+    {
+        question: "🏊‍♂️🌊",
+        answer: "berenang",
+        hint: "Olahraga di dalam air."
+    },
+    {
+        question: "🎂🕯️",
+        answer: "ulang tahun",
+        hint: "Perayaan hari lahir tiup lilin."
+    },
+    {
+        question: "💔😭",
+        answer: "patah hati",
+        hint: "Sedih karena putus cinta."
+    },
+    {
+        question: "🤕🏥",
+        answer: "kecelakaan",
+        hint: "Terluka dan dibawa ke RS."
+    },
+    {
+        question: "💰🏦",
+        answer: "bank",
+        hint: "Tempat menyimpan uang."
+    },
+    {
+        question: "🎓📚",
+        answer: "wisuda",
+        hint: "Lulus kuliah pakai toga."
+    },
+    {
+        question: "🏖️🌴",
+        answer: "pantai",
+        hint: "Liburan di laut ada pohonnya."
+    },
+    {
+        question: "🌋💥",
+        answer: "gunung meletus",
+        hint: "Bencana alam lahar panas."
+    },
+    {
+        question: "👽🛸",
+        answer: "alien",
+        hint: "Makhluk luar angkasa naik piring terbang."
+    },
+    {
+        question: "🧱🇨🇳",
+        answer: "tembok cina",
+        hint: "Bangunan panjang bersejarah di Tiongkok."
+    },
+    {
+        question: "🗼🇫🇷",
+        answer: "menara eiffel",
+        hint: "Ikon kota Paris."
+    },
+    {
+        question: "🗽🇺🇸",
+        answer: "patung liberty",
+        hint: "Wanita bawa obor di New York."
+    },
+    {
+        question: "🍫💝",
+        answer: "valentine",
+        hint: "Hari kasih sayang kasih coklat."
+    },
+    {
+        question: "🎄🎅",
+        answer: "natal",
+        hint: "Hari raya ada sinterklas."
+    },
+    {
+        question: "🕌🌙",
+        answer: "lebaran",
+        hint: "Hari raya umat muslim."
+    },
+    {
+        question: "🧨🎆",
+        answer: "tahun baru",
+        hint: "Pergantian tahun ada petasan."
+    },
+    {
+        question: "👀❤️",
+        answer: "mata hati",
+        hint: "Perasaan terdalam (kiasan)."
+    },
+    {
+        question: "🦶⚽",
+        answer: "sepak bola",
+        hint: "Olahraga nendang bola."
     }
 ];
 
 const CAK_LONTONG_BANK = [
+    // --- YANG SUDAH ADA (TETAP) ---
     {
         question: "Binatang apa yang kalau kita pukul malah kita yang sakit?",
         answer: "palu",
         explain: "Karena yang dipukul itu palu, bukan binatang beneran. Cak Lontong style: membingungkan."
     },
+    
+    // --- TAMBAHAN BARU (BANYAK & NGESELIN) ---
     {
-        question: "Buah apa yang beratnya cuma 3 ons?",
-        answer: "buah pikiran",
-        explain: "Karena cuma istilah, bukan buah beneran. Mohon tidak serius, Bang."
+        question: "Matahari tenggelam di sebelah...",
+        answer: "gawat",
+        explain: "Gawat kalau matahari tenggelam di sebelah kita, bisa kebakar."
     },
     {
-        question: "Kalau gajah jadi ayam, lalu ayam jadi gajah, apa yang berubah?",
-        answer: "nama",
-        explain: "Yang berubah cuma nama panggilannya saja."
+        question: "Galon apa yang berat?",
+        answer: "galonmu",
+        explain: "Ya kalau galon saya kan ringan, kalau galonmu ya berat bawa sendiri."
     },
     {
-        question: "Hewan apa yang selalu terlambat?",
-        answer: "kura-kura",
-        explain: "Karena jalannya lambat. Jawaban receh khas Cak Lontong."
+        question: "Apabila mengendarai mobil wajib bawa...",
+        answer: "satu",
+        explain: "Kalo bawa dua gimana mengendarainya?"
+    },
+    {
+        question: "Mawar melati semuanya...",
+        answer: "bunga",
+        explain: "Ya emang bunga, masa makanan."
+    },
+    {
+        question: "Jangan berteman dengan orang...",
+        answer: "hilang",
+        explain: "Gimana cara bertemannya kalau orangnya hilang?"
+    },
+    {
+        question: "Hujan turun biasanya...",
+        answer: "kebawah",
+        explain: "Kalau ke atas namanya air mancur."
+    },
+    {
+        question: "Ada guling ada...",
+        answer: "benang",
+        explain: "Guling tanpa benang jahitannya lepas semua."
+    },
+    {
+        question: "Orang bingung mikir...",
+        answer: "salah",
+        explain: "Orang bingung kok disuruh mikir, ya jelas salah dong."
+    },
+    {
+        question: "Kucing diatas pohon kalau turun apanya dulu?",
+        answer: "niatnya",
+        explain: "Kalau gak ada niat, dia gak bakal turun."
+    },
+    {
+        question: "Lebak bulus, cililitan, adalah nama...",
+        answer: "keduanya",
+        explain: "Benar kan? Itu nama keduanya."
+    },
+    {
+        question: "Tidak boleh masuk kelas...",
+        answer: "lalat",
+        explain: "Lalat mengganggu pelajaran."
+    },
+    {
+        question: "Bendera NKRI warnanya...",
+        answer: "cuma dua",
+        explain: "Merah sama Putih, jadi cuma dua warna."
+    },
+    {
+        question: "Candi borobudur adalah candi...",
+        answer: "itu",
+        explain: "Iya itu, masa candi ini."
+    },
+    {
+        question: "Orang berjalan di atas air tidak pakai...",
+        answer: "otak",
+        explain: "Udah tau air kok diinjak, pake jembatan atau perahu dong."
+    },
+    {
+        question: "Ikan bernafas di air dengan...",
+        answer: "tenang",
+        explain: "Kalau gelisah nanti ikannya stress."
+    },
+    {
+        question: "Apa fungsi rem?",
+        answer: "ngebut",
+        explain: "Coba kalau gak ada rem, berani ngebut gak?"
+    },
+    {
+        question: "Orang makan karena...",
+        answer: "sadar",
+        explain: "Kalau pingsan gak bisa makan."
+    },
+    {
+        question: "Burung adalah hewan yang bisa...",
+        answer: "temenan",
+        explain: "Burung kakatua temenan sama burung dara."
+    },
+    {
+        question: "Batik merupakan produk asli dari...",
+        answer: "manusia",
+        explain: "Masa hewan bisa bikin batik."
+    },
+    {
+        question: "Hewan yang mempunyai 2 kelamin namanya...",
+        answer: "jantan",
+        explain: "Kela 'min' jantan, dan kela 'max' betina. (Maksa dikit)"
+    },
+    {
+        question: "Dalam permainan bulutangkis, dilarang memegang...",
+        answer: "tangan",
+        explain: "Apalagi tangan lawan, nanti dikira modus."
+    },
+    {
+        question: "Kecoa adalah hewan yang...",
+        answer: "ada",
+        explain: "Ya emang ada, sering lewat di dapur."
+    },
+    {
+        question: "Mobil tidak bisa jalan karena...",
+        answer: "parkir",
+        explain: "Kalau jalan namanya bukan parkir."
+    },
+    {
+        question: "Dimana tempat lahir I.R. Soepratman?",
+        answer: "indonesia",
+        explain: "W.R. Soepratman di Purworejo, kalau I.R. Soepratman mungkin tetangganya."
+    },
+    {
+        question: "Waktu lulus sekolah, siswa mencoret-coret...",
+        answer: "temannya",
+        explain: "Baju temannya yang dicoret, bukan baju sendiri."
+    },
+    {
+        question: "Yang menyebabkan haus saat romadhon...",
+        answer: "cuaca",
+        explain: "Kalau cuaca panas pasti haus."
+    },
+    {
+        question: "Bisa dipanggil, tidak bisa menengok...",
+        answer: "telinga",
+        explain: "Coba panggil telinga kamu, bisa nengok gak?"
+    },
+    {
+        question: "Banteng menyeruduk menggunakan...",
+        answer: "tenaga",
+        explain: "Kalau gak ada tenaga, mana bisa nyeruduk."
+    },
+    {
+        question: "Sumur itu berbentuk...",
+        answer: "lubang",
+        explain: "Kalau kotak namanya peti mati."
+    },
+    {
+        question: "Tanda kalau kucing marah ekornya...",
+        answer: "satu",
+        explain: "Kalau ekornya dua namanya siluman."
+    },
+    {
+        question: "Alat musik gesek...",
+        answer: "bunyi",
+        explain: "Kalau digesek gak bunyi, rusak berarti."
+    },
+    {
+        question: "Ibu menjahit dengan jarum dan...",
+        answer: "serius",
+        explain: "Kalau bercanda nanti ketusuk."
+    },
+    {
+        question: "Pesawat mendarat di...",
+        answer: "ban",
+        explain: "Bannya dulu yang nyentuh landasan."
+    },
+    {
+        question: "Kapan waktu yang tepat untuk membuka pintu?",
+        answer: "tertutup",
+        explain: "Kalau pintu terbuka ngapain dibuka lagi."
+    },
+    {
+        question: "Anda datang terlambat maka anda...",
+        answer: "selamat",
+        explain: "Selamat, anda sampai tujuan walau telat."
+    },
+    {
+        question: "Alat untuk memotong...",
+        answer: "tajam",
+        explain: "Kalau tumpul gak bisa buat motong."
+    },
+    {
+        question: "Supaya bersih kita mandi dengan...",
+        answer: "yakin",
+        explain: "Yakinlah kalau sudah mandi pasti bersih."
+    },
+    {
+        question: "Ibu kota Indonesia adalah...",
+        answer: "bapaknya",
+        explain: "Ibu kota pasangannya bapak kota."
+    },
+    {
+        question: "Ayam apa yang paling besar?",
+        answer: "ayam semesta",
+        explain: "Induk ayam semesta."
+    },
+    {
+        question: "Sandal apa yang paling enak?",
+        answer: "sandal terasi",
+        explain: "Sambal terasi maksudnya."
+    },
+    {
+        question: "Ada api pasti ada...",
+        answer: "anya",
+        explain: "Api tanpa 'A' jadi pi. Anya Geraldine?"
+    },
+    {
+        question: "Cicak biasanya makan...",
+        answer: "nyamuk",
+        explain: "Kali ini jawabannya bener, biar yang jawab salah kesel."
+    },
+    {
+        question: "Hewan yang suka hinggap di makanan...",
+        answer: "lapar",
+        explain: "Kalau kenyang dia tidur."
+    },
+    {
+        question: "Jauh di mata dekat di...",
+        answer: "sini",
+        explain: "Di sini, di hati."
+    },
+    {
+        question: "Duduk sama rendah, berdiri sama...",
+        answer: "kaki",
+        explain: "Masa berdiri pakai tangan."
+    },
+    {
+        question: "Satu ditambah satu sama dengan...",
+        answer: "soal",
+        explain: "Itu soal matematika anak SD."
+    },
+    {
+        question: "Penyanyi luar negeri yang susah nelen...",
+        answer: "ed sered",
+        explain: "Ed Sheeran maksudnya (seret tenggorokan)."
+    },
+    {
+        question: "Yang bisa menangkap penjahat di malam hari...",
+        answer: "bangga",
+        explain: "Bangga dong jadi polisi berprestasi."
+    },
+    {
+        question: "Malam apa yang paling indah?",
+        answer: "malamar",
+        explain: "Melamar kamu."
     }
 ];
 
 const FAMILY100_BANK = [
+    // --- YANG SUDAH ADA (TETAP) ---
     {
         question: "Sebutkan benda yang biasa ada di kamar tidur.",
         answers: ["bantal", "guling", "kasur", "lemari", "selimut", "lampu", "cermin"]
     },
+    
+    // --- TAMBAHAN BARU (BANYAK) ---
     {
-        question: "Sebutkan kendaraan yang sering dipakai di jalan raya.",
-        answers: ["motor", "mobil", "bus", "truk", "sepeda"]
+        question: "Apa yang biasa dilakukan orang saat bangun tidur?",
+        answers: ["cek hp", "minum air", "ke kamar mandi", "doa", "mandi", "geliat", "matikan alarm"]
     },
     {
-        question: "Sebutkan makanan yang digoreng.",
-        answers: ["tempe", "tahu", "ayam", "ikan", "pisang", "kentang"]
+        question: "Sebutkan warna pelangi.",
+        answers: ["merah", "kuning", "hijau", "biru", "jingga", "nila", "ungu"]
     },
     {
-        question: "Sebutkan minuman yang sering disajikan dingin.",
-        answers: ["es teh", "es jeruk", "es kopi", "jus", "soda"]
+        question: "Jenis-jenis sambal di Indonesia.",
+        answers: ["terasi", "bawang", "ijo", "matah", "korek", "tomat", "dabu-dabu", "bajak"]
+    },
+    {
+        question: "Benda apa yang wajib dibawa saat sekolah?",
+        answers: ["buku", "pulpen", "tas", "uang saku", "topi", "dasi", "bekal"]
+    },
+    {
+        question: "Apa yang dilakukan orang saat mati lampu?",
+        answers: ["cari lilin", "hidupkan senter", "tidur", "main hp", "ngipasin badan", "keluar rumah"]
+    },
+    {
+        question: "Sebutkan nama-nama buah berwarna merah.",
+        answers: ["apel", "stroberi", "semangka", "rambutan", "ceri", "tomat", "delima"]
+    },
+    {
+        question: "Apa alasan orang datang terlambat?",
+        answers: ["macet", "bangun kesiangan", "ban bocor", "hujan", "lupa jam", "sakit perut"]
+    },
+    {
+        question: "Sebutkan hewan yang hidup di air.",
+        answers: ["ikan", "udang", "kepiting", "cumi-cumi", "paus", "lumba-lumba", "ubur-ubur", "hiu"]
+    },
+    {
+        question: "Apa yang biasa ada di dalam dompet?",
+        answers: ["uang", "ktp", "sim", "kartu atm", "foto", "struk belanja", "stnk"]
+    },
+    {
+        question: "Sebutkan merek mie instan populer di Indonesia.",
+        answers: ["indomie", "mie sedaap", "supermi", "sarimi", "lemonilo", "pop mie"]
+    },
+    {
+        question: "Apa yang orang lakukan di pantai?",
+        answers: ["berenang", "main pasir", "foto", "berjemur", "makan", "lihat sunset", "selancar"]
+    },
+    {
+        question: "Sebutkan nama-nama planet.",
+        answers: ["bumi", "mars", "jupiter", "saturnus", "merkurius", "venus", "uranus", "neptunus"]
+    },
+    {
+        question: "Sebutkan anggota tubuh yang berpasangan (kiri & kanan).",
+        answers: ["mata", "telinga", "tangan", "kaki", "alis", "lubang hidung", "paru-paru", "ginjal"]
+    },
+    {
+        question: "Apa yang biasa dibeli di minimarket?",
+        answers: ["minuman", "roti", "rokok", "snack", "sabun", "shampo", "mie instan"]
+    },
+    {
+        question: "Sebutkan profesi yang memakai seragam.",
+        answers: ["polisi", "tentara", "dokter", "pilot", "satpam", "perawat", "guru", "siswa"]
+    },
+    {
+        question: "Apa yang dilakukan orang kalau lagi galau?",
+        answers: ["dengerin lagu", "nangis", "curhat", "tidur", "makan", "melamun", "jalan jalan"]
+    },
+    {
+        question: "Sebutkan rasa es krim.",
+        answers: ["coklat", "vanila", "stroberi", "durian", "mangga", "kopi", "mint"]
+    },
+    {
+        question: "Apa yang membuat bayi menangis?",
+        answers: ["lapar", "haus", "ngompol", "sakit", "digigit nyamuk", "gerah", "pengen digendong"]
+    },
+    {
+        question: "Sebutkan alat transportasi umum.",
+        answers: ["bus", "angkot", "kereta", "pesawat", "kapal", "taksi", "ojek"]
+    },
+    {
+        question: "Apa yang biasa dilakukan saat tahun baru?",
+        answers: ["bakar jagung", "main kembang api", "begadang", "tiup terompet", "kumpul keluarga", "doa"]
+    },
+    {
+        question: "Sebutkan jenis olahraga bola besar.",
+        answers: ["sepak bola", "basket", "voli", "futsal", "rugby", "bowling"]
+    },
+    {
+        question: "Apa yang ada di dalam kulkas?",
+        answers: ["air dingin", "telur", "sayur", "buah", "daging", "es batu", "susu", "sisa makanan"]
+    },
+    {
+        question: "Sebutkan judul lagu kebangsaan/wajib nasional.",
+        answers: ["indonesia raya", "maju tak gentar", "halo halo bandung", "garuda pancasila", "padamu negeri", "mengheningkan cipta"]
+    },
+    {
+        question: "Apa yang biasa dilakukan saat jam istirahat sekolah?",
+        answers: ["jajan", "makan", "main", "ngobrol", "ke toilet", "sholat", "baca buku"]
+    },
+    {
+        question: "Sebutkan hewan yang bisa terbang.",
+        answers: ["burung", "nyamuk", "lalat", "lebah", "kupu-kupu", "kelelawar", "capung"]
+    },
+    {
+        question: "Benda apa yang sering hilang di rumah?",
+        answers: ["remot tv", "kunci", "korek", "gunting kuku", "peniti", "kaos kaki", "karet gelang"]
+    },
+    {
+        question: "Sebutkan menu sarapan orang Indonesia.",
+        answers: ["nasi goreng", "bubur ayam", "lontong sayur", "nasi uduk", "roti", "susu", "gorengan"]
+    },
+    {
+        question: "Apa yang dilakukan orang saat hujan turun?",
+        answers: ["neduh", "pakai payung", "pakai jas hujan", "tidur", "angkat jemuran", "makan mie"]
+    },
+    {
+        question: "Sebutkan nama-nama hari.",
+        answers: ["senin", "selasa", "rabu", "kamis", "jumat", "sabtu", "minggu"]
+    },
+    {
+        question: "Apa yang identik dengan hantu pocong?",
+        answers: ["kain kafan", "lompat", "putih", "kuburan", "seram", "tali", "kapas"]
+    },
+    {
+        question: "Sebutkan sosmed yang populer.",
+        answers: ["instagram", "tiktok", "facebook", "twitter", "whatsapp", "youtube", "telegram"]
+    },
+    {
+        question: "Apa yang menyebabkan sakit perut?",
+        answers: ["makan pedas", "telat makan", "masuk angin", "makan asam", "keracunan", "haid"]
+    },
+    {
+        question: "Benda apa yang ada di kamar mandi?",
+        answers: ["gayung", "ember", "sabun", "sikat gigi", "odol", "shampo", "handuk", "kloset"]
+    },
+    {
+        question: "Sebutkan hewan buas.",
+        answers: ["singa", "macan", "buaya", "ular", "beruang", "serigala", "hiu"]
+    },
+    {
+        question: "Apa yang dilakukan orang di bioskop?",
+        answers: ["nonton", "makan popcorn", "minum", "pacaran", "duduk", "diam"]
+    },
+    {
+        question: "Sebutkan mata uang asing.",
+        answers: ["dollar", "euro", "yen", "won", "ringgit", "rupee", "peso", "poundsterling"]
+    },
+    {
+        question: "Apa yang membuat orang tertawa?",
+        answers: ["lawakan", "komedi", "gelitik", "kejadian lucu", "meme", "teman"]
+    },
+    {
+        question: "Sebutkan bumbu dapur.",
+        answers: ["garam", "gula", "merica", "ketumbar", "kunyit", "jahe", "bawang", "kecap"]
+    },
+    {
+        question: "Apa yang ada di lapangan sepak bola?",
+        answers: ["bola", "gawang", "wasit", "pemain", "rumput", "garis", "penonton"]
+    },
+    {
+        question: "Sebutkan jenis-jenis bunga.",
+        answers: ["mawar", "melati", "anggrek", "matahari", "tulip", "kamboja", "sepatu", "lili"]
+    },
+    {
+        question: "Apa yang dilakukan suami istri saat malam pertama?",
+        answers: ["tidur", "ngobrol", "hitung angpao", "mandi", "makan", "berdoa"]
+    },
+    {
+        question: "Sebutkan merek HP.",
+        answers: ["samsung", "iphone", "xiaomi", "oppo", "vivo", "realme", "infinix", "nokia"]
+    },
+    {
+        question: "Apa yang biasa ada di pasar malam?",
+        answers: ["bianglala", "kora-kora", "rumah hantu", "arum manis", "baju", "komedi putar", "penjual"]
+    },
+    {
+        question: "Sebutkan nama nabi.",
+        answers: ["muhammad", "isa", "musa", "ibrahim", "nuh", "adam", "yusuf", "sulaiman"]
+    },
+    {
+        question: "Apa yang dilakukan orang saat kepedasan?",
+        answers: ["minum", "kipas-kipas", "cari gula", "keringatan", "makan kerupuk", "teriak"]
+    },
+    {
+        question: "Sebutkan superhero terkenal.",
+        answers: ["superman", "batman", "spiderman", "iron man", "hulk", "captain america", "thor", "wonder woman"]
+    },
+    {
+        question: "Benda tajam yang berbahaya.",
+        answers: ["pisau", "gunting", "silet", "jarum", "pedang", "kaca pecah", "paku"]
+    },
+    {
+        question: "Sebutkan topping martabak manis.",
+        answers: ["coklat", "keju", "kacang", "wijen", "susu", "pisang", "kismis"]
+    },
+    {
+        question: "Apa yang identik dengan vampir?",
+        answers: ["darah", "gigi taring", "takut matahari", "peti mati", "bawang putih", "pucat", "jubah hitam"]
     }
 ];
 
@@ -4738,12 +5573,11 @@ _Video dikirim tanpa watermark!_`;
             }
 
 // =================================================
-            // FITUR GET STICKER (SUMBER: GIPHY OFFICIAL)
+            // FITUR GET STICKER (GIPHY FIX KEY)
             // =================================================
             if (cmd === "!gets" || cmd === "!caristiker") {
                 let query = teks.replace(cmd, "").trim();
 
-                // 1. Kalau user gak ketik apa-apa, random topik Indo
                 if (!query) {
                     const topikIndo = ["pentol lucu", "tuman", "patrick sindiran", "kucing nangis", "meme indonesia"];
                     query = topikIndo[Math.floor(Math.random() * topikIndo.length)];
@@ -4752,16 +5586,17 @@ _Video dikirim tanpa watermark!_`;
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
                 
                 try {
-                    // 2. Cari ke GIPHY (Pakai Public Beta Key yang awet)
-                    // Limit 10 biar ada variasi, rating g biar aman
-                    const { data } = await axios.get(`https://api.giphy.com/v1/stickers/search?api_key=TvF9Udz2Y1uZ91Ju&q=${encodeURIComponent(query)}&limit=10&rating=g`);
+                    // GANTI KEY DI SINI:
+                    // Key Lama: TvF9Udz2Y1uZ91Ju (Mati)
+                    // Key Baru: 0UTRbFtkPbpl2nRfJ50lnJkatU4NsRO2 (Public Beta Key)
+                    const apiKey = "0UTRbFtkPbpl2nRfJ50lnJkatU4NsRO2"; 
+                    
+                    const { data } = await axios.get(`https://api.giphy.com/v1/stickers/search?api_key=${apiKey}&q=${encodeURIComponent(query)}&limit=10&rating=g`);
 
                     if (data.data && data.data.length > 0) {
-                        // Ambil 1 stiker random dari 10 hasil teratas
                         const randomIndex = Math.floor(Math.random() * data.data.length);
                         const stickerUrl = data.data[randomIndex].images.original.url;
 
-                        // 3. Kirim Stiker
                         await sock.sendMessage(from, { 
                             sticker: { url: stickerUrl } 
                         }, { quoted: msg });
@@ -4769,12 +5604,17 @@ _Video dikirim tanpa watermark!_`;
                         await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                     } else {
-                        await sock.sendMessage(from, { text: "❌ Stiker tidak ditemukan Bang." }, { quoted: msg });
+                        await sock.sendMessage(from, { text: "❌ Stiker tidak ditemukan." }, { quoted: msg });
                     }
 
                 } catch (e) {
                     console.error("Gets Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Gagal mengambil stiker. Sinyal lagi jelek." }, { quoted: msg });
+                    // Kalau kunci ini mati juga, kita kasih pesan biar user tau
+                    if (e.response && e.response.status === 401) {
+                         await sock.sendMessage(from, { text: "❌ API Key Giphy Expired Bang. Harus bikin key sendiri di developers.giphy.com (Gratis)." }, { quoted: msg });
+                    } else {
+                         await sock.sendMessage(from, { text: "❌ Gagal mengambil stiker." }, { quoted: msg });
+                    }
                 }
             }
 
@@ -5178,7 +6018,7 @@ _Note: Ini cuma ramalan/arti kata, jangan baper ya Bang!_`;
             }
 
 // =================================================
-            // FITUR TO ANIME (SERVER BARU: RYZENDESU)
+            // FITUR TO ANIME (POLLINATIONS STABLE)
             // =================================================
             if (cmd === "!toanime" || cmd === "!jadianime") {
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
@@ -5191,6 +6031,7 @@ _Note: Ini cuma ramalan/arti kata, jangan baper ya Bang!_`;
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
+                    // 1. Download & Upload
                     let mediaBuffer;
                     if (isQuotedImage) {
                         mediaBuffer = await downloadMediaMessage(
@@ -5201,38 +6042,42 @@ _Note: Ini cuma ramalan/arti kata, jangan baper ya Bang!_`;
                     }
 
                     const imageUrl = await uploadToCatbox(mediaBuffer);
+
+                    // 2. Buat URL Pollinations (Prompt: Anime Style)
+                    // Teknik ini 99% anti-error karena Pollinations server raksasa
+                    const prompt = "japanese anime style, anime drawing, high quality, vibrant colors";
+                    const seed = Math.floor(Math.random() * 1000);
+                    const finalUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux-anime&image=${encodeURIComponent(imageUrl)}`;
                     
-                    // Panggil API Ryzendesu
-                    const apiUrl = `https://api.ryzendesu.com/api/ai/toanime?url=${imageUrl}`;
-                    
+                    // 3. Kirim Hasil
                     await sock.sendMessage(from, { 
-                        image: { url: apiUrl }, 
-                        caption: "🎨 *TO ANIME SUCCESS*" 
+                        image: { url: finalUrl }, 
+                        caption: "" 
                     }, { quoted: msg });
 
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
                     console.error("ToAnime Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Gagal Bang. Pastikan fotonya jelas muka orang." }, { quoted: msg });
+                    await sock.sendMessage(from, { text: "❌ Gagal ubah jadi anime." }, { quoted: msg });
                 }
             }
 
 // =================================================
-            // FITUR HD / REMINI (SERVER BARU: RYZENDESU)
+            // FITUR HD / REMINI (SERVER: AGATZ)
             // =================================================
             if (cmd === "!hd" || cmd === "!remini") {
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
                 const isImage = msg.message.imageMessage;
 
                 if (!isQuotedImage && !isImage) {
-                    return sock.sendMessage(from, { text: `⚠️ Kirim/Reply foto burik dengan caption *${cmd}*` }, { quoted: msg });
+                    return sock.sendMessage(from, { text: "⚠️ Kirim/Reply foto burik dengan caption *!hd*" }, { quoted: msg });
                 }
 
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
-                    // 1. Download Gambar
+                    // 1. Download & Upload
                     let mediaBuffer;
                     if (isQuotedImage) {
                         mediaBuffer = await downloadMediaMessage(
@@ -5241,24 +6086,28 @@ _Note: Ini cuma ramalan/arti kata, jangan baper ya Bang!_`;
                     } else {
                         mediaBuffer = await downloadMediaMessage(msg, 'buffer', {});
                     }
-
-                    // 2. Upload ke Catbox
+                    
                     const imageUrl = await uploadToCatbox(mediaBuffer);
 
-                    // 3. Panggil API Ryzendesu (Pengganti Widipe)
-                    const apiUrl = `https://api.ryzendesu.com/api/ai/remini?url=${imageUrl}`;
+                    // 2. Request ke Agatz
+                    // API ini mengembalikan JSON berisi URL hasil
+                    const { data } = await axios.get(`https://api.agatz.xyz/api/remini?url=${imageUrl}`);
 
-                    // 4. Kirim Hasil
+                    if (!data || !data.data || !data.data.url) {
+                        throw new Error("Respon API kosong");
+                    }
+
+                    // 3. Kirim Hasil
                     await sock.sendMessage(from, { 
-                        image: { url: apiUrl }, 
-                        caption: "✨ *HD SUKSES*" 
+                        image: { url: data.data.url }, 
+                        caption: "" 
                     }, { quoted: msg });
 
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
                     console.error("HD Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Server HD lagi down Bang, coba lagi nanti." }, { quoted: msg });
+                    await sock.sendMessage(from, { text: "❌ Server HD lagi sibuk Bang, coba beberapa saat lagi." }, { quoted: msg });
                 }
             }
 
@@ -10813,7 +11662,7 @@ ${slot1}  |  ${slot2}  |  ${slot3}
 
                 await sock.sendMessage(from, {
                     text:
-`🎯 *Game Tebak Kata*
+`*Game Tebak Kata*
 
 Tebak kata berikut ini:
 
@@ -10842,7 +11691,7 @@ Contoh: kopi`
 
                 await sock.sendMessage(from, {
                     text:
-`🖼️ *Game Tebak Gambar (Emoji)*
+`*Game Tebak Gambar (Emoji)*
 
 ${soal.question}
 
@@ -10870,7 +11719,7 @@ Ketik jawaban kamu di chat ini *tanpa pakai tanda seru (!)*.`
 
                 await sock.sendMessage(from, {
                     text:
-`🤣 *Game Cak Lontong*
+`*Game Cak Lontong*
 
 Soal:
 ${soal.question}
@@ -10896,7 +11745,7 @@ Ketik *nyerah* kalau mau lihat jawaban + penjelasan.`
 
                 await sock.sendMessage(from, {
                     text:
-`👨‍👩‍👧‍👦 *Game Family 100*
+`*Game Family 100*
 
 Pertanyaan:
 ${soal.question}
@@ -11045,7 +11894,7 @@ Kesempatan: ${tg.tries}/3`
                 if (jawaban === "nyerah") {
                     await sock.sendMessage(from, {
                         text:
-`🧠 *Jawaban & Penjelasan Cak Lontong*
+`*Jawaban & Penjelasan Cak Lontong*
 
 Soal   : ${ck.question}
 Jawaban: *${ck.answer}*
@@ -11057,7 +11906,7 @@ ${ck.explain}`
                 } else if (jawaban === ck.answer) {
                     await sock.sendMessage(from, {
                         text:
-`✅ *Benar Bang!* 🎉
+`*Benar Bang!*
 
 Jawaban: *${ck.answer}*
 
@@ -11098,7 +11947,7 @@ Kesempatan: ${ck.tries}/3`
                 if (jawaban === "nyerah") {
                     await sock.sendMessage(from, {
                         text:
-`📊 *Jawaban Family 100*
+`*Jawaban Family 100*
 
 Pertanyaan:
 ${f100.question}
@@ -11112,7 +11961,7 @@ Jawaban survei:
                     if (match) {
                         await sock.sendMessage(from, {
                             text:
-`✅ *Jawaban kamu cocok dengan survei!*
+`*Jawaban kamu cocok dengan survei!*
 
 Pertanyaan:
 ${f100.question}
@@ -11317,17 +12166,61 @@ Percobaan: ${f100.tries}/5`
             if (cmd === "!siapakahaku" || cmd === "!tebakaku") {
                 if (siapakahaku[from]) return sock.sendMessage(from, { text: "Selesaikan dulu soal yang ada Bang!" }, { quoted: msg });
 
-                // DATABASE SOAL (Bisa ditambahin terus)
+                // DATABASE SOAL SIAPA AKU
                 const bankSoal = [
+                    // --- CONTOH LAMA (TETAP) ---
                     { soal: "Aku punya kaki 4, tapi tidak bisa berjalan. Siapakah aku?", jawab: "meja" },
                     { soal: "Aku semakin dipotong, aku semakin tinggi. Siapakah aku?", jawab: "celana" },
+
+                    // --- TAMBAHAN BARU (BANYAK) ---
                     { soal: "Aku punya banyak gigi, tapi tidak bisa menggigit. Siapakah aku?", jawab: "sisir" },
                     { soal: "Aku dimatikan saat kamu tidur, dan dinyalakan saat gelap. Siapakah aku?", jawab: "lampu" },
                     { soal: "Aku selalu datang, tapi tidak pernah sampai. Siapakah aku?", jawab: "besok" },
                     { soal: "Punya leher tapi tak punya kepala. Punya lengan tapi tak punya tangan. Siapakah aku?", jawab: "baju" },
                     { soal: "Aku berat, tapi bisa terbang tinggi. Siapakah aku?", jawab: "pesawat" },
                     { soal: "Aku punya mata tapi tidak bisa melihat. Siapakah aku?", jawab: "badai" }, // Mata badai
-                    { soal: "Kalau aku pecah, baru aku berguna. Siapakah aku?", jawab: "telur" }
+                    { soal: "Kalau aku pecah, baru aku berguna. Siapakah aku?", jawab: "telur" },
+                    { soal: "Aku makin ngeringin badanmu, aku malah makin basah. Siapakah aku?", jawab: "handuk" },
+                    { soal: "Aku punya tulang, tapi tidak punya daging dan kulit. Siapakah aku?", jawab: "payung" }, // Rangka payung
+                    { soal: "Aku punya kota, gunung, dan sungai, tapi tidak ada tanah atau air. Siapakah aku?", jawab: "peta" },
+                    { soal: "Aku milikmu, tapi orang lain lebih sering menggunakannya daripada kamu. Siapakah aku?", jawab: "nama" },
+                    { soal: "Aku bisa dipegang tapi tidak bisa dilihat. Siapakah aku?", jawab: "telinga" }, // Pegang telinga sendiri susah dilihat tanpa cermin
+                    { soal: "Aku punya kepala tapi tidak punya rambut. Siapakah aku?", jawab: "paku" },
+                    { soal: "Aku berjalan tanpa kaki, aku menangis tanpa mata. Siapakah aku?", jawab: "awan" },
+                    { soal: "Aku penuh dengan lubang, tapi masih bisa menampung air. Siapakah aku?", jawab: "spons" },
+                    { soal: "Aku dibeli untuk makanan, tapi aku sendiri tidak bisa dimakan. Siapakah aku?", jawab: "piring" },
+                    { soal: "Aku punya 8 kaki dan bisa membuat jaring. Siapakah aku?", jawab: "laba-laba" },
+                    { soal: "Aku punya leher panjang dan makan daun di pohon tinggi. Siapakah aku?", jawab: "jerapah" },
+                    { soal: "Aku raja hutan yang punya rambut tebal di leher. Siapakah aku?", jawab: "singa" },
+                    { soal: "Aku hewan besar yang punya belalai. Siapakah aku?", jawab: "gajah" },
+                    { soal: "Aku tidur dengan posisi terbalik (kepala di bawah). Siapakah aku?", jawab: "kelelawar" },
+                    { soal: "Aku tidak punya kaki tapi bisa bergerak cepat di tanah. Siapakah aku?", jawab: "ular" },
+                    { soal: "Aku hewan yang membawa rumahku kemana-mana. Siapakah aku?", jawab: "siput" }, // atau kura-kura
+                    { soal: "Aku putih, kecil, dan rasanya asin. Siapakah aku?", jawab: "garam" },
+                    { soal: "Aku manis, disukai semut, dan berasal dari tebu. Siapakah aku?", jawab: "gula" },
+                    { soal: "Aku air yang jatuh dari langit. Siapakah aku?", jawab: "hujan" },
+                    { soal: "Aku jembatan warna-warni yang muncul setelah hujan. Siapakah aku?", jawab: "pelangi" },
+                    { soal: "Aku bulat, ditendang-tendang, dan diperebutkan 22 orang. Siapakah aku?", jawab: "bola" },
+                    { soal: "Aku alas kaki yang selalu diinjak-injak. Siapakah aku?", jawab: "sandal" },
+                    { soal: "Aku lubang dua di wajahmu untuk bernapas. Siapakah aku?", jawab: "hidung" },
+                    { soal: "Aku keras, putih, dan ada di dalam mulut. Siapakah aku?", jawab: "gigi" },
+                    { soal: "Aku jendela dunia yang penuh tulisan. Siapakah aku?", jawab: "buku" },
+                    { soal: "Aku selalu mengikutimu kemanapun kamu pergi saat ada cahaya. Siapakah aku?", jawab: "bayangan" },
+                    { soal: "Aku benda yang bisa ngomong dan menampilkan gambar bergerak. Siapakah aku?", jawab: "televisi" },
+                    { soal: "Aku kendaraan panjang yang berjalan di atas rel. Siapakah aku?", jawab: "kereta" },
+                    { soal: "Aku punya sayap besi tapi bukan burung. Siapakah aku?", jawab: "pesawat" },
+                    { soal: "Aku tempat menyimpan uang yang aman. Siapakah aku?", jawab: "bank" }, // atau celengan
+                    { soal: "Aku buah kuning yang melengkung dan disukai monyet. Siapakah aku?", jawab: "pisang" },
+                    { soal: "Aku sayuran oranye makanan kelinci. Siapakah aku?", jawab: "wortel" },
+                    { soal: "Aku benda cair yang bikin lantai licin. Siapakah aku?", jawab: "minyak" }, // atau sabun
+                    { soal: "Aku bisa panas bisa dingin, dan selalu dicari saat haus. Siapakah aku?", jawab: "air" },
+                    { soal: "Aku punya jarum tapi tidak bisa menjahit. Siapakah aku?", jawab: "jam" },
+                    { soal: "Aku dipakai di kepala untuk melindungi dari panas. Siapakah aku?", jawab: "topi" },
+                    { soal: "Aku punya tuts hitam putih dan menghasilkan musik. Siapakah aku?", jawab: "piano" },
+                    { soal: "Aku bulat, bersinar di malam hari, dan bisa sabit atau purnama. Siapakah aku?", jawab: "bulan" },
+                    { soal: "Aku pusat tata surya yang sangat panas. Siapakah aku?", jawab: "matahari" },
+                    { soal: "Aku berkedip-kedip kecil di langit malam. Siapakah aku?", jawab: "bintang" },
+                    { soal: "Aku serangga kecil yang suka menghisap darah. Siapakah aku?", jawab: "nyamuk" }
                 ];
 
                 const random = bankSoal[Math.floor(Math.random() * bankSoal.length)];
@@ -11342,7 +12235,7 @@ Percobaan: ${f100.tries}/5`
                     }, 60000) // Waktu 60 Detik
                 };
 
-                await sock.sendMessage(from, { text: `🕵️ *SIAPAKAH AKU?*\n\n"${random.soal}"\n\n_Reply pesan ini untuk menjawab!_` }, { quoted: msg });
+                await sock.sendMessage(from, { text: `*SIAPAKAH AKU?*\n\n"${random.soal}"\n\n_Reply pesan ini untuk menjawab!_` }, { quoted: msg });
                 return;
             }
 
