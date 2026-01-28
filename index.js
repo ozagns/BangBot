@@ -30,6 +30,7 @@ const https = require("https");
 const fs = require('fs');
 const os = require('os'); // Bisa taruh di atas file juga
 const path = require('path');
+const ytdl = require('@distube/ytdl-core');
 
 function listFilesRecursive(dir) {
   let results = [];
@@ -4868,22 +4869,22 @@ Bot berjalan lancar di PC Abang!`;
             }
 
 // =================================================
-            // FITUR PLAY MUSIC V5 (DIRECT BROWSER MODE)
+            // FITUR PLAY MUSIC V6 (LOCAL ENGINE - ANTI RIBET)
             // =================================================
             if (cmd === "!play" || cmd === "!lagu" || cmd === "!song") {
                 const query = teks.replace(cmd, "").trim();
 
                 if (!query) {
                     return sock.sendMessage(from, { 
-                        text: `⚠️ Judul lagunya apa Bang?\nContoh: *${cmd} Dewa 19 Kangen*` 
+                        text: `⚠️ Judul lagunya apa Bang?\nContoh: *${cmd} Sheila on 7*` 
                     }, { quoted: msg });
                 }
 
                 await sock.sendMessage(from, { react: { text: "🎧", key: msg.key } });
-                await sock.sendMessage(from, { text: `⏳ Sedang memproses via Jalur Khusus...` }, { quoted: msg });
+                await sock.sendMessage(from, { text: `⏳ Sedang memproses...` }, { quoted: msg });
 
                 try {
-                    // 1. CARI VIDEO DULU
+                    // 1. CARI LAGU DI YOUTUBE
                     const search = await yts(query);
                     const video = search.videos[0]; 
 
@@ -4892,7 +4893,7 @@ Bot berjalan lancar di PC Abang!`;
                     }
 
                     const infoLagu = 
-`🎵 *MUSIC FOUND* 🎵
+`🎵 *MUSIC PLAYER* 🎵
 
 📌 *Judul:* ${video.title}
 ⏱️ *Durasi:* ${video.timestamp}
@@ -4905,86 +4906,26 @@ _Sedang mengambil audio..._`;
                         caption: infoLagu 
                     }, { quoted: msg });
 
-                    // 2. FUNGSI RAHASIA: SCRAPE Y2MATE LANGSUNG
-                    // Kita pura-pura jadi Browser Chrome biar gak diblokir
-                    const y2matePost = async (url) => {
-                        const headers = {
-                            "accept": "*/*",
-                            "accept-language": "en-US,en;q=0.9,id;q=0.8",
-                            "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-                            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                        };
+                    // 2. DOWNLOAD PAKAI ENGINE LOKAL (@distube/ytdl-core)
+                    // Kita pakai 'pipe' biar hemat memori server
+                    const stream = ytdl(video.url, { 
+                        filter: 'audioonly', 
+                        quality: 'highestaudio' 
+                    });
 
-                        // Tahap A: Analisa Video
-                        const { data: analyze } = await axios.post(
-                            "https://www.y2mate.com/mates/analyzeV2/ajax", 
-                            new URLSearchParams({
-                                k_query: url,
-                                k_page: "home",
-                                hl: "en",
-                                q_auto: 0,
-                            }), 
-                            { headers }
-                        );
-
-                        if (!analyze || !analyze.links || !analyze.links.mp3) return null;
-
-                        // Cari kualitas MP3 terbaik (biasanya '128k' atau yg pertama muncul)
-                        const videoId = analyze.vid;
-                        const mp3Key = Object.values(analyze.links.mp3)[0].k; // Ambil key convert pertama
-
-                        // Tahap B: Konversi ke Link Download
-                        const { data: convert } = await axios.post(
-                            "https://www.y2mate.com/mates/convertV2/ajax",
-                            new URLSearchParams({
-                                vid: videoId,
-                                k: mp3Key,
-                            }),
-                            { headers }
-                        );
-
-                        if (convert && convert.dlink) {
-                            return convert.dlink;
-                        }
-                        return null;
-                    };
-
-                    // JALANKAN SCRAPER
-                    let audioUrl = await y2matePost(video.url);
-
-                    // CADANGAN: KALAU Y2MATE GAGAL, PAKAI FALLBACK API BARU (DREADED)
-                    if (!audioUrl) {
-                        console.log("Scraper gagal, mencoba API Cadangan...");
-                        try {
-                           const { data: resBackup } = await axios.get(`https://api.dreaded.site/api/ytdl/audio?url=${video.url}`);
-                           if (resBackup.status && resBackup.result) {
-                               audioUrl = resBackup.result.downloadLink || resBackup.result;
-                           }
-                        } catch (errBackup) {
-                            console.log("Backup gagal.");
-                        }
-                    }
-
-                    if (!audioUrl) {
-                        // OPSI TERAKHIR: KIRIM LINK SAJA
-                        return sock.sendMessage(from, { 
-                            text: `❌ *Gagal Upload Audio*\nServer bot lagi dimusuhi YouTube Bang.\n\nKlik link ini aja buat download manual:\n${video.url}` 
-                        }, { quoted: msg });
-                    }
-
-                    // 3. KIRIM HASIL
+                    // 3. KIRIM STREAM LANGSUNG KE WA
+                    // Bot tidak perlu simpan file, langsung oper ke user (Streaming)
                     await sock.sendMessage(from, { 
-                        audio: { url: audioUrl }, 
+                        audio: { stream: stream }, 
                         mimetype: 'audio/mp4', 
-                        ptt: false, 
-                        fileName: `${video.title}.mp3`
+                        ptt: false 
                     }, { quoted: msg });
 
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
-                    console.error("Play V5 Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Server lagi capek banget Bang. Coba lagi nanti." }, { quoted: msg });
+                    console.error("Play V6 Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Gagal memproses audio. Coba judul lain." }, { quoted: msg });
                 }
             }
 
