@@ -30,6 +30,8 @@ const https = require("https");
 const fs = require('fs');
 const os = require('os'); // Bisa taruh di atas file juga
 const path = require('path');
+// di atas, paling enak tambah:
+const path = require("path");
 
 function listFilesRecursive(dir) {
   let results = [];
@@ -194,7 +196,18 @@ const activeConfess = {};
 
 // --- DATABASE PESAN SEMENTARA (ANTI-DELETE) ---
 const msgLog = {}; // Tempat nyimpen riwayat chat
-const NOMOR_OWNER = "6289681914183@s.whatsapp.net"; // Ganti No WA Abang (pake @s.whatsapp.net)
+const NOMOR_OWNER = "628975800981@s.whatsapp.net"; // Ganti No WA Abang (pake @s.whatsapp.net)
+
+// --- SETUP AI REPLICATE ---
+const Replicate = require("replicate");
+
+// HAPUS TOKEN YANG TERTULIS LANGSUNG, GANTI JADI INI:
+const replicate = new Replicate({
+  auth: process.env.REPLICATE_API_TOKEN, // Mengambil dari file .env atau Server
+});
+
+const moment = require('moment-timezone');
+const yts = require('yt-search');
 
 // =========================================================
 // PDF MERGE QUEUE (per chat)
@@ -489,6 +502,101 @@ async function transcribeAudio(audioBuffer) {
         return response.data.text || response.data._text || null;
     } catch (err) {
         console.error("Transcription Error:", err.response?.data || err.message);
+        return null;
+    }
+}
+
+// =================================================
+// FUNGSI SCRAPER RESEP (RESEPKOKI.ID)
+// =================================================
+async function cariResep(query) {
+    try {
+        const searchUrl = `https://resepkoki.id/?s=${encodeURIComponent(query)}`;
+        const { data } = await axios.get(searchUrl);
+        const $ = cheerio.load(data);
+
+        // 1. Ambil link resep pertama dari hasil pencarian
+        const link = $('.tlet-element-image a').first().attr('href');
+        
+        if (!link) return null; // Gak nemu
+
+        // 2. Buka link resepnya
+        const { data: resData } = await axios.get(link);
+        const $$ = cheerio.load(resData);
+
+        // 3. Ambil data detail
+        const judul = $$('.entry-title').first().text().trim();
+        const image = $$('.wp-post-image').first().attr('src'); // Gambar utama
+        
+        // Ambil Bahan
+        let bahan = [];
+        $$('.ingredient-list li').each((i, el) => {
+            bahan.push("• " + $$(el).text().trim());
+        });
+
+        // Ambil Langkah
+        let langkah = [];
+        $$('.instruction-list li').each((i, el) => {
+            langkah.push(`${i + 1}. ` + $$(el).text().trim());
+        });
+
+        // Ambil info tambahan (Porsi/Waktu)
+        const porsi = $$('.sw-recipe-servings').text().trim() || "-";
+        const waktu = $$('.sw-recipe-cook-time').text().trim() || "-";
+
+        return {
+            judul,
+            image,
+            porsi,
+            waktu,
+            bahan: bahan.join("\n"),
+            langkah: langkah.join("\n\n"),
+            sumber: link
+        };
+
+    } catch (e) {
+        console.error("Scrape Resep Error:", e);
+        return null;
+    }
+}
+
+// =================================================
+// FUNGSI SCRAPER ARTI NAMA (PRIMBON)
+// =================================================
+async function artiNama(nama) {
+    try {
+        // Website Primbon
+        const url = `https://primbon.com/arti_nama.php?nama1=${nama}&proses=+Submit%21+`;
+        const { data } = await axios.get(url);
+        const $ = cheerio.load(data);
+
+        // Ambil isi konten dari ID #body
+        let content = $('#body').text(); 
+        
+        // Parsing Teks (Karena website jadul, kita potong manual string-nya)
+        // Pola: "ARTI NAMA: [NAMA] ... (isi) ... Nama:"
+        
+        // 1. Cari batas awal
+        let splitAwal = content.split(`ARTI NAMA: ${nama}`);
+        if (splitAwal.length < 2) {
+            // Coba split generic kalau nama kapitalisasinya beda
+            splitAwal = content.split(`ARTI NAMA:`);
+        }
+        
+        if (splitAwal.length < 2) return null;
+
+        let hasilKotor = splitAwal[1];
+
+        // 2. Cari batas akhir (biasanya ada tulisan "Nama:" untuk input box bawahnya)
+        let hasilBersih = hasilKotor.split("Nama:")[0];
+        
+        // 3. Bersihkan sampah lain (iklan/copyright)
+        hasilBersih = hasilBersih.replace("Copyright", "").trim();
+
+        return hasilBersih;
+
+    } catch (e) {
+        console.error("Scrape Arti Nama Error:", e);
         return null;
     }
 }
@@ -2937,8 +3045,11 @@ _Berikut pesan/media yang dihapus:_`;
 • !emojimix → Gabung emoji
 • !togif → video → GIF
 • !confess 08123** | Pesan | Pengirim
-• !hd → perbesar resolusi gambar 2x
-• !removebg → hapus background foto`;
+• !hd → foto burikmu jadi hd
+• !removebg → hapus background foto
+• !edit → edit foto
+• !curhat [Ceritamu]
+• !play [Judul Lagu]`;
                 
                 await sock.sendMessage(from, { text: utamaMsg }, { quoted: msg });
             }
@@ -3068,6 +3179,7 @@ _Berikut pesan/media yang dihapus:_`;
             if (cmd === "!menudownload") {
                 const downMsg =
 `*DOWNLOADER*
+• !play [Judul Lagu]
 • !yt url → YouTube video
 • !yta url → YouTube audio
 • !fb url → Facebook
@@ -3085,6 +3197,9 @@ _Berikut pesan/media yang dihapus:_`;
 `*FUN*
 • !afk [alasan] → Mode Jangan Ganggu
 • !khodam nama → cek khodam
+• !artinama [Nama]
+• !motivasi
+• !faktaunik
 • !slot → mesin slot
 • !dadu [jumlah] → lempar dadu
 • !tebakkata / !tebakgambar
@@ -3113,7 +3228,10 @@ _Berikut pesan/media yang dihapus:_`;
                 const aiMsg =
 `*AI*
 • !ai pertanyaan → Tanya jawab cerdas (ChatGPT)
-• !img teks → Buat gambar dari teks (AI)`;
+• !img teks → Buat gambar dari teks (AI)
+• !edit → edit foto
+• !jadianime → foto jadi anime
+• !curhat [Ceritamu]`;
 
                 await sock.sendMessage(from, { text: aiMsg }, { quoted: msg });
             }
@@ -3138,6 +3256,8 @@ _Berikut pesan/media yang dihapus:_`;
                 const toolMsg =
 `*TOOLS*
 • !confess 08123** | Pesan | Pengirim
+• !alarm jam zona waktu keterangan
+• !resep → cari resep masakan
 • !lirik [judul] → Cari lirik lagu + cover album
 • !bill [total] [orang/@tag] → Hitung patungan otomatis
 • !qr teks → QR code
@@ -3150,7 +3270,7 @@ _Berikut pesan/media yang dihapus:_`;
 • !ocr → Ambil teks dari gambar
 • !cekresi <resi> → lacak paket (otomatis)
 • !ssweb url → screenshot website
-• !short / !unshort url → link tool
+• !shortlink / !unshortlink → link tool
 • !stalkig username → info profil IG`;
 
                 await sock.sendMessage(from, { text: toolMsg }, { quoted: msg });
@@ -3160,9 +3280,11 @@ _Berikut pesan/media yang dihapus:_`;
                 const religMsg =
 `*RELIGI*
 • !sholat [kota] → Jadwal sholat hari ini
-• !quran [surah] → Baca ayat Al-Quran
+• !quran [No.Surah] [Ayat] → Baca ayat Al-Quran
 • !kisahnabi [nama] → Cerita Nabi
-• !doaharian → Kumpulan doa harian`;
+• !doaharian → Kumpulan doa harian
+• !asmaulhusna
+• !alkitab [Ayat]`;
 
                 await sock.sendMessage(from, { text: religMsg }, { quoted: msg });
             }
@@ -3231,9 +3353,8 @@ _Berikut pesan/media yang dihapus:_`;
 • !ssearch [kueri] → Cari stiker melalui Google
 • !gets → Ambil stiker meme secara acak
 
-
 *MEDIA & EDITING*
-• !hd → Perbesar resolusi gambar 2x (Upscale)
+• !hd → foto burikmu jadi hd
 • !removebg → Hapus latar belakang foto
 • !cartoon → Berikan efek kartun pada foto
 • !restoreface → Perbaiki wajah yang blur pada foto
@@ -3242,7 +3363,6 @@ _Berikut pesan/media yang dihapus:_`;
 • !sschat [teks] → Buat screenshot chat palsu (WA)
 • !iqc → Buat screenshot chat gaya iPhone (Quote Chat)
 • !meme [atas|bawah] → Buat meme dari foto yang direply
-
 
 *KONVERSI FILE*
 • !toimg → Ubah stiker menjadi gambar biasa
@@ -3257,7 +3377,6 @@ _Berikut pesan/media yang dihapus:_`;
 • !compress → Kompres ukuran foto atau video
 • !vidcompress [size] → Kecilkan ukuran file video secara spesifik
 
-
 *AUDIO & MUSIK*
 • !vocalremove → Hilangkan suara vokal (buat karaoke)
 • !audiomix → Gabungkan dua file audio
@@ -3269,7 +3388,6 @@ _Berikut pesan/media yang dihapus:_`;
 • !tts [id/en] → Mengubah teks menjadi suara (Text to Speech)
 • !lirik [judul] → Cari lirik lagu beserta cover albumnya
 • !audioconvert [mp3/wav/ogg] → Ubah format file audio
-
 
 *OFFICE & PDF*
 • !office2pdf → Ubah DOCX/XLSX/PPTX menjadi PDF
@@ -3284,8 +3402,8 @@ _Berikut pesan/media yang dihapus:_`;
 • !pagenum → Beri nomor halaman pada PDF
 • !pdfmeta → Cek metadata/detail file PDF
 
-
 *DOWNLOADER*
+• !play [Judul Lagu]
 • !yt / !yta [url] → YouTube
 • !tt [url] → TikTok
 • !ig [url] → Instagram
@@ -3294,10 +3412,12 @@ _Berikut pesan/media yang dihapus:_`;
 • !x [url] → X/Twitter
 • !pin [url] → Pinterest
 
-
 *AI & EDUKASI*
 • !ai [pertanyaan] → Tanya jawab cerdas dengan ChatGPT
 • !img [teks] → Generate gambar dari teks (AI)
+• !edit → edit foto
+• !jadianime → foto jadi anime
+• !curhat [Ceritamu]
 • !summarize → Ringkas teks yang panjang
 • !paraphrase → Ubah susunan kalimat (anti-plagiasi)
 • !kbbi [kata] → Cari arti kata resmi di Kamus Besar Bahasa Indonesia
@@ -3306,7 +3426,6 @@ _Berikut pesan/media yang dihapus:_`;
 • !hitung [angka] → Kalkulator otomatis
 • !nulis [teks] → Ubah ketikan menjadi tulisan tangan di kertas
 • !convert [nilai] → Konversi berbagai satuan teknik
-
 
 *HIBURAN & GAME*
 • !khodam [nama] → Cek khodam pelindungmu
@@ -3318,9 +3437,13 @@ _Berikut pesan/media yang dihapus:_`;
 • !jodoh [nama1|nama2] → Cek kecocokan cinta
 • !afk [alasan] → Aktifkan mode sedang tidak di tempat
 • !siapa [teks] → Pilih member grup secara acak
-
+• !artinama [Nama]
+• !motivasi
+• !faktaunik
 
 *TOOLS & INFORMASI*
+• !alarm jam zona waktu keterangan
+• !resep → cari resep masakan
 • !cuaca [kota] → Info cuaca terkini
 • !gempa → Info gempa bumi terbaru dari BMKG
 • !trending / !news → Berita viral dan headline terbaru
@@ -3328,13 +3451,19 @@ _Berikut pesan/media yang dihapus:_`;
 • !qr / !qrdecode → Buat atau baca kode QR
 • !ocr → Ambil teks dari sebuah gambar
 • !ssweb [url] → Screenshot tampilan website
-• !short [url] → Perpendek link panjang
+• !shortlink [url] / !unshortlink [url]
 • !ipinfo [ip] → Cek informasi alamat IP/Domain
-• !sholat [kota] → Jadwal sholat hari ini
 
+*RELIGI*
+• !sholat [kota] → Jadwal sholat hari ini
+• !quran [No.Surah] [Ayat] → Baca ayat Al-Quran
+• !kisahnabi [nama] → Cerita Nabi
+• !doaharian → Kumpulan doa harian
+• !asmaulhusna
+• !alkitab [Ayat]
 
 *SUPPORT*
-• !saweria → Dukung pengembangan BangBot ([https://saweria.co/ozagns](https://saweria.co/ozagns))
+• !saweria → Dukung pengembangan BangBot (https://saweria.co/ozagns)
 • !owner → Kontak langsung pemilik bot
 
 Gunakan fitur seperlunya ya Bang, jangan buat spam.`;
@@ -4603,6 +4732,489 @@ Bot berjalan lancar di PC Abang!`;
                     await sock.sendMessage(from, { text: "Gagal membuat gambar. Server mungkin sedang sibuk." }, { quoted: msg });
                 }
                 return;
+            }
+
+// =================================================
+            // FITUR AI EDIT FOTO (BY REPLICATE)
+            // =================================================
+            if (cmd === "!edit" || cmd === "!aiedit") {
+                // 1. Cek apakah ada caption perintahnya?
+                const prompt = teks.replace(cmd, "").trim();
+                if (!prompt) {
+                    return sock.sendMessage(from, { 
+                        text: "⚠️ Perintahnya apa Bang?\nContoh: *!edit ubah rambutnya jadi warna merah*" 
+                    }, { quoted: msg });
+                }
+
+                // 2. Cek apakah ada gambar yang direply atau dikirim bareng command?
+                const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
+                const isImage = msg.message.imageMessage;
+                
+                if (!isQuotedImage && !isImage) {
+                    return sock.sendMessage(from, { 
+                        text: "⚠️ Kirim gambar dengan caption !edit [perintah], atau reply gambar dengan command itu." 
+                    }, { quoted: msg });
+                }
+
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+                await sock.sendMessage(from, { text: "Sebentar Bang, AI lagi mikir... (Agak lama nih)" }, { quoted: msg });
+
+                try {
+                    // 3. Download gambar dari WhatsApp jadi buffer
+                    let mediaBuffer;
+                    if (isQuotedImage) {
+                         // Download dari pesan yang di-reply
+                        mediaBuffer = await downloadMediaMessage(
+                            { message: msg.message.extendedTextMessage.contextInfo.quotedMessage },
+                            'buffer',
+                            { },
+                        );
+                    } else {
+                         // Download dari pesan bergambar langsung
+                        mediaBuffer = await downloadMediaMessage(
+                            msg,
+                            'buffer',
+                            { },
+                        );
+                    }
+
+                    // 4. Kirim ke Replicate AI (Model InstructPix2Pix)
+                    // Model ini jago ngedit gambar berdasarkan instruksi teks
+                    // Kita pakai model yang agak cepat: "tstramer/material-diffusion" atau sejenisnya
+                    // Model rekomendasi untuk edit: "timothybrooks/instruct-pix2pix"
+                    
+                    const output = await replicate.run(
+                      "timothybrooks/instruct-pix2pix:30c1d0b916a6f8efce20493f5d61ee2975216ca399c900014275f56498164475",
+                      {
+                        input: {
+                          image: mediaBuffer, // Kirim buffer gambar langsung
+                          prompt: prompt,     // Instruksi dari user
+                          num_inference_steps: 20, // Makin tinggi makin detail tapi makin lama
+                          image_guidance_scale: 1.5 // Seberapa mirip dengan gambar asli
+                        }
+                      }
+                    );
+
+                    // Output dari Replicate biasanya berupa Array berisi URL gambar [ 'https://...' ]
+                    if (output && output[0]) {
+                        const resultUrl = output[0];
+
+                        // 5. Kirim hasilnya balik ke user
+                        await sock.sendMessage(from, { 
+                            image: { url: resultUrl }, 
+                            caption: `✅ Sukses Edit AI!\n\nPerintah: "${prompt}"`
+                        }, { quoted: msg });
+                        
+                        await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+
+                    } else {
+                        throw new Error("Output AI kosong.");
+                    }
+
+                } catch (e) {
+                    console.error("AI Edit Error:", e);
+                    await sock.sendMessage(from, { 
+                        text: "❌ Gagal Bang. Mungkin AI-nya lagi sibuk, server limit, atau gambarnya terlalu rumit." 
+                    }, { quoted: msg });
+                    await sock.sendMessage(from, { react: { text: "❌", key: msg.key } });
+                }
+            }
+
+// =================================================
+            // FITUR PLAY MUSIC (YOUTUBE)
+            // =================================================
+            if (cmd === "!play" || cmd === "!lagu" || cmd === "!song") {
+                const query = teks.replace(cmd, "").trim();
+
+                if (!query) {
+                    return sock.sendMessage(from, { 
+                        text: `⚠️ Judul lagunya apa Bang?\nContoh: *${cmd} Mahalini Sial*` 
+                    }, { quoted: msg });
+                }
+
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+                await sock.sendMessage(from, { text: `Sedang mencari & mendownload lagu: *"${query}"*...` }, { quoted: msg });
+
+                try {
+                    // 1. CARI LAGU DI YOUTUBE
+                    const search = await yts(query);
+                    const video = search.videos[0]; // Ambil hasil paling atas
+
+                    if (!video) {
+                        return sock.sendMessage(from, { text: "❌ Lagu tidak ditemukan." }, { quoted: msg });
+                    }
+
+                    // 2. TAMPILKAN INFO LAGU DULU (Thumbnail & Durasi)
+                    const infoLagu = 
+`
+*Judul:* ${video.title}
+*Durasi:* ${video.timestamp}
+*Views:* ${video.views}
+*Channel:* ${video.author.name}
+*Link:* ${video.url}
+
+_Tunggu sebentar, sedang mengirim audio..._`;
+
+                    await sock.sendMessage(from, { 
+                        image: { url: video.thumbnail }, 
+                        caption: infoLagu 
+                    }, { quoted: msg });
+
+                    // 3. DOWNLOAD AUDIO (Pakai API Stabil)
+                    // Kita pakai API Agatz/Ryzendesu (Gratis & Stabil untuk MP3)
+                    const apiUrl = `https://api.agatz.xyz/api/ytmp3?url=${video.url}`;
+                    const { data: res } = await axios.get(apiUrl);
+
+                    if (!res || !res.status || !res.data || !res.data.downloadUrl) {
+                        throw new Error("Link download gagal diambil.");
+                    }
+
+                    const audioUrl = res.data.downloadUrl;
+
+                    // 4. KIRIM FILE AUDIO
+                    await sock.sendMessage(from, { 
+                        audio: { url: audioUrl }, 
+                        mimetype: 'audio/mp4', // Supaya terbaca sebagai musik
+                        ptt: false, // false = Kirim sbg File Lagu (Bukan Voice Note)
+                        fileName: `${video.title}.mp3` // Nama file pas didownload user
+                    }, { quoted: msg });
+
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+
+                } catch (e) {
+                    console.error("Play Music Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Gagal mendownload lagu. Server lagi sibuk atau durasi kepanjangan." }, { quoted: msg });
+                }
+            }
+
+// =================================================
+            // FITUR CURHAT (AI TEMAN BIJAK)
+            // =================================================
+            if (cmd === "!curhat" || cmd === "!saran") {
+                const curhatan = teks.replace(cmd, "").trim();
+
+                if (!curhatan) {
+                    return sock.sendMessage(from, { 
+                        text: `⚠️ Mau curhat apa? Cerita aja, aku dengerin kok.\n\nContoh:\n*${cmd} Aku lagi capek banget sama kerjaan, rasanya pengen nyerah.*` 
+                    }, { quoted: msg });
+                }
+
+                // Kasih reaksi kuping (mendengarkan)
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+                
+                // Typing effect biar kayak manusia mikir
+                await sock.sendPresenceUpdate('composing', from); 
+
+                try {
+                    // Kita pakai model Llama 3 (Gratis/Murah & Cepat di Replicate)
+                    // Prompt-nya kita set biar dia jadi teman yang asik
+                    const output = await replicate.run(
+                        "meta/meta-llama-3-8b-instruct",
+                        {
+                            input: {
+                                prompt: `User berkata: "${curhatan}"`,
+                                system_prompt: "Kamu adalah 'BangBot', teman curhat yang sangat empatik, bijak, santai, dan suportif. Gunakan bahasa Indonesia yang gaul, akrab, tapi tetap sopan (seperti teman dekat). Jangan kaku. Berikan semangat atau solusi jika diminta. Jangan terlalu panjang, secukupnya saja.",
+                                max_tokens: 300,
+                                temperature: 0.7, // 0.7 biar kreatif tapi tetep nyambung
+                                top_p: 0.9
+                            }
+                        }
+                    );
+
+                    // Output Llama di Replicate biasanya Array string, kita gabung
+                    const balasanAI = output.join("").trim();
+
+                    await sock.sendMessage(from, { 
+                        text: balasanAI 
+                    }, { quoted: msg });
+
+                    // Kasih reaksi love/peluk di akhir
+                    await sock.sendMessage(from, { react: { text: "❤️", key: msg.key } });
+
+                } catch (e) {
+                    console.error("Curhat Error:", e);
+                    // Fallback kalau AI error/habis kuota
+                    const fallbackMsg = [
+                        "Sabar ya Bang, badai pasti berlalu. Tetap semangat!",
+                        "Aku tau ini berat, tapi kamu pasti kuat melewatinya.",
+                        "Kalau butuh istirahat, istirahat dulu aja. Jangan dipaksa.",
+                        "Dunia emang kadang gak adil, tapi Tuhan gak pernah tidur.",
+                        "Cerita aja terus kalau lega, aku di sini kok."
+                    ];
+                    const randomSabar = fallbackMsg[Math.floor(Math.random() * fallbackMsg.length)];
+                    
+                    await sock.sendMessage(from, { 
+                        text: `(AI lagi istirahat) tapi intinya: ${randomSabar}` 
+                    }, { quoted: msg });
+                }
+            }
+
+// =================================================
+            // FITUR PENCARI RESEP MASAKAN
+            // =================================================
+            if (cmd === "!resep" || cmd === "!masak") {
+                const query = teks.replace(cmd, "").trim();
+
+                if (!query) {
+                    return sock.sendMessage(from, { 
+                        text: `⚠️ Mau masak apa Bang?\nContoh: *${cmd} Nasi Goreng Spesial*` 
+                    }, { quoted: msg });
+                }
+
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+                await sock.sendMessage(from, { text: `Sedang mencari resep *"${query}"*...` }, { quoted: msg });
+
+                try {
+                    // Panggil fungsi scraper yang kita buat di bawah tadi
+                    const resep = await cariResep(query);
+
+                    if (!resep) {
+                        return sock.sendMessage(from, { text: "❌ Resep tidak ditemukan. Coba kata kunci lain (misal: Ayam Bakar)." }, { quoted: msg });
+                    }
+
+                    // Susun Pesan
+                    const captionResep = 
+`👨‍🍳 *BUKU RESEP BANGBOT* 👨‍🍳
+
+*Judul:* ${resep.judul}
+*Waktu:* ${resep.waktu}
+*Porsi:* ${resep.porsi}
+
+*BAHAN-BAHAN:*
+${resep.bahan}
+
+*CARA MEMBUAT:*
+${resep.langkah}
+
+*Sumber:* ${resep.sumber}`;
+
+                    // Kirim Gambar + Caption
+                    if (resep.image) {
+                        await sock.sendMessage(from, { 
+                            image: { url: resep.image }, 
+                            caption: captionResep 
+                        }, { quoted: msg });
+                    } else {
+                        // Kalau gak ada gambar, kirim teks aja
+                        await sock.sendMessage(from, { text: captionResep }, { quoted: msg });
+                    }
+
+                } catch (e) {
+                    console.log(e);
+                    await sock.sendMessage(from, { text: "Gagal mengambil resep." }, { quoted: msg });
+                }
+            }
+
+// =================================================
+            // FITUR ARTI NAMA
+            // =================================================
+            if (cmd === "!artinama" || cmd === "!nama") {
+                const nama = teks.replace(cmd, "").trim();
+
+                if (!nama) {
+                    return sock.sendMessage(from, { 
+                        text: `⚠️ Namanya siapa Bang?\nContoh: *${cmd} Agus Kotak*` 
+                    }, { quoted: msg });
+                }
+
+                await sock.sendMessage(from, { react: { text: "🔮", key: msg.key } });
+
+                try {
+                    const arti = await artiNama(nama);
+
+                    if (!arti) {
+                        return sock.sendMessage(from, { text: "❌ Maaf, arti nama tidak ditemukan di kitab primbon." }, { quoted: msg });
+                    }
+
+                    const pesanBalasan = 
+`*ARTI NAMA*
+
+*Nama:* ${nama}
+*Arti:*
+${arti}
+
+_Note: Ini cuma ramalan/arti kata, jangan baper ya Bang!_`;
+
+                    await sock.sendMessage(from, { text: pesanBalasan }, { quoted: msg });
+
+                } catch (e) {
+                    console.log(e);
+                    await sock.sendMessage(from, { text: "Gagal mencari arti nama." }, { quoted: msg });
+                }
+            }
+
+// =================================================
+            // 1. FITUR BIKIN GAMBAR (TEXT-TO-IMAGE)
+            // =================================================
+            if (cmd === "!img" || cmd === "!image" || cmd === "!lukis") {
+                const prompt = teks.replace(cmd, "").trim();
+
+                if (!prompt) {
+                    return sock.sendMessage(from, { text: `⚠️ Mau gambar apa Bang?\nContoh: *${cmd} kucing naik motor di bulan*` }, { quoted: msg });
+                }
+
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+                await sock.sendMessage(from, { text: "Sedang proses... (Tunggu ±20 detik)" }, { quoted: msg });
+
+                try {
+                    // Pakai Model Stable Diffusion (Gratis/Murah di Replicate)
+                    const output = await replicate.run(
+                        "stability-ai/stable-diffusion:ac732df83cea7fff18b8472768c88ad041fa750ff7682a21affe81863cbe77e4",
+                        {
+                            input: {
+                                prompt: prompt,
+                                scheduler: "K_EULER_ANCESTRAL",
+                                num_inference_steps: 30
+                            }
+                        }
+                    );
+
+                    // Output berupa array link gambar
+                    if (output && output[0]) {
+                        await sock.sendMessage(from, { 
+                            image: { url: output[0] }, 
+                            caption: `*AI IMAGE GENERATOR*\n\nPrompt: "${prompt}"` 
+                        }, { quoted: msg });
+                        await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+                    }
+                } catch (e) {
+                    console.error("AI Img Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Gagal membuat gambar. Server sibuk." }, { quoted: msg });
+                }
+            }
+
+            // =================================================
+            // 2. FITUR FOTO JADI ANIME
+            // =================================================
+            if (cmd === "!jadianime" || cmd === "!anime") {
+                const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
+                const isImage = msg.message.imageMessage;
+                
+                if (!isQuotedImage && !isImage) {
+                    return sock.sendMessage(from, { text: "⚠️ Kirim foto atau reply foto dengan caption *!jadianime*" }, { quoted: msg });
+                }
+
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+                await sock.sendMessage(from, { text: "Sedang proses... (Agak lama ±30s)" }, { quoted: msg });
+
+                try {
+                    // Download Media
+                    let mediaBuffer;
+                    if (isQuotedImage) {
+                        mediaBuffer = await downloadMediaMessage(
+                            { message: msg.message.extendedTextMessage.contextInfo.quotedMessage }, 'buffer', {}
+                        );
+                    } else {
+                        mediaBuffer = await downloadMediaMessage(msg, 'buffer', {});
+                    }
+
+                    // Convert Buffer ke Base64 Data URI (Syarat Replicate utk img-to-img)
+                    const base64Image = `data:image/jpeg;base64,${mediaBuffer.toString('base64')}`;
+
+                    // Model: Anything V3 / V4 (Spesialis Anime)
+                    const output = await replicate.run(
+                        "cjwbw/anything-v3-better-vae:09a5805203f4c12da649ec1923bb7729517ca25fcac790e640eaa9ed66573b65",
+                        {
+                            input: {
+                                image: base64Image,
+                                prompt: "masterpiece, best quality, highres, anime style",
+                                negative_prompt: "low quality, bad anatomy, text, error, extra digits",
+                                num_inference_steps: 25,
+                                guidance_scale: 7
+                            }
+                        }
+                    );
+
+                    if (output && output[0]) {
+                        await sock.sendMessage(from, { 
+                            image: { url: output[0] }, 
+                            caption: `🎌 *SUKSES JADI WIBU!*` 
+                        }, { quoted: msg });
+                    }
+                } catch (e) {
+                    console.error("Anime Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Gagal convert. Pastikan fotonya jelas (wajah)." }, { quoted: msg });
+                }
+            }
+
+// =================================================
+            // FITUR ALARM (SUPPORT WIB, WITA, WIT)
+            // =================================================
+            if (cmd === "!alarm" || cmd === "!ingatkan") {
+                const args = teks.split(" ");
+                let waktuInput = args[1]; // misal: 15.30
+                
+                // 1. Deteksi apakah user ngetik zona waktu?
+                let timeZone = "Asia/Jakarta"; // Default WIB
+                let zonaLabel = "WIB";
+                let msgStartIndex = 2; // Default: pesan mulai dari kata ke-3
+
+                // Cek kata ketiga (args[2]), apakah itu wib/wita/wit?
+                if (args[2]) {
+                    const cekZona = args[2].toLowerCase();
+                    if (cekZona === "wib") {
+                        timeZone = "Asia/Jakarta";
+                        zonaLabel = "WIB";
+                        msgStartIndex = 3;
+                    } else if (cekZona === "wita") {
+                        timeZone = "Asia/Makassar";
+                        zonaLabel = "WITA";
+                        msgStartIndex = 3;
+                    } else if (cekZona === "wit") {
+                        timeZone = "Asia/Jayapura";
+                        zonaLabel = "WIT";
+                        msgStartIndex = 3;
+                    }
+                }
+
+                // Ambil isi pesan alarm sesuai posisi index tadi
+                const pesanAlarm = args.slice(msgStartIndex).join(" ") || "Waktu Habis!";
+
+                // Validasi Format Waktu
+                if (!waktuInput || !/^\d{1,2}[:.]\d{2}$/.test(waktuInput)) {
+                    return sock.sendMessage(from, { 
+                        text: `⚠️ Format salah Bang.\n\nContoh:\n*${cmd} 15.30 WIB Sholat*\n*${cmd} 16.00 WITA Pulang Kerja*\n*${cmd} 06.00 WIT Bangun Pagi*` 
+                    }, { quoted: msg });
+                }
+
+                waktuInput = waktuInput.replace('.', ':');
+                const [targetJam, targetMenit] = waktuInput.split(':').map(Number);
+
+                if (targetJam > 23 || targetMenit > 59) {
+                    return sock.sendMessage(from, { text: "⚠️ Jam gak valid Bang (00:00 - 23:59)." }, { quoted: msg });
+                }
+
+                // 2. Set Waktu Menggunakan Zona yang Dipilih
+                const now = moment().tz(timeZone);
+                const targetWaktu = moment().tz(timeZone);
+
+                targetWaktu.hour(targetJam);
+                targetWaktu.minute(targetMenit);
+                targetWaktu.second(0);
+
+                // Kalau jam target < jam sekarang, berarti buat BESOK
+                if (targetWaktu.isBefore(now)) {
+                    targetWaktu.add(1, 'day');
+                }
+
+                const durasiMs = targetWaktu.diff(now);
+                const jamDisplay = targetWaktu.format("HH:mm");
+                const hariDisplay = targetWaktu.format("DD MMM");
+
+                // Konfirmasi ke User
+                await sock.sendMessage(from, { 
+                    text: `✅ Alarm diset untuk *${jamDisplay} ${zonaLabel}* (${hariDisplay}).\n📝 Pesan: "${pesanAlarm}"` 
+                }, { quoted: msg });
+
+                // Mulai Timer
+                setTimeout(async () => {
+                    const infoSender = isGroup ? (msg.key.participant || sender) : sender;
+                    
+                    await sock.sendMessage(from, { 
+                        text: `⏰ *ALARM ${jamDisplay} ${zonaLabel} BUNYI!* ⏰\n\n👤 *Untuk:* @${infoSender.split('@')[0]}\n📝 *Pesan:* ${pesanAlarm}`,
+                        mentions: [infoSender]
+                    });
+                }, durasiMs);
             }
 
             // --- FITUR TRANSLATE (GOOGLE TRANSLATE) ---
@@ -7754,7 +8366,6 @@ Gunakan format: *[angka] [satuan_asal] to [satuan_tujuan]*
             // Reply audio/video atau kirim dengan caption !vocalremove
             // =================================================
             if (cmd === "!vocalremove") {
-            const path = require("path");
 
             try {
                 await sock.sendMessage(from, { text: "⏳ Memproses vocal remove (FFmpeg)..." }, { quoted: msg });
@@ -8735,11 +9346,11 @@ ${imdbLink}`
             // SHORTENER — Pendekin URL (tanpa API key)
             // Provider: bitly (simple text response)
             // =================================================
-            if (cmd === "!short") {
-            const raw = teks.replace(/!short/i, "").trim();
+            if (cmd === "!shortlink") {
+            const raw = teks.replace(/!shortlink/i, "").trim();
             if (!raw) {
                 await sock.sendMessage(from, {
-                text: "Format: *!short <url>*\nContoh: !short https://google.com"
+                text: "Format: *!shortlink <url>*\nContoh: !shortlink https://google.com"
                 });
                 return;
             }
@@ -8772,12 +9383,12 @@ ${imdbLink}`
             // =================================================
             // UNSHORT — Kembalikan URL pendek ke URL asli
             // =================================================
-            if (cmd === "!unshort") {
-                const raw = teks.replace(/!unshort/i, "").trim();
+            if (cmd === "!unshortlink") {
+                const raw = teks.replace(/!unshortlink/i, "").trim();
 
                 if (!raw) {
                     await sock.sendMessage(from, {
-                        text: "Format: *!unshort <url>*\nContoh: !unshort https://is.gd/abc123"
+                        text: "Format: *!unshortlink <url>*\nContoh: !unshortlink https://is.gd/abc123"
                     });
                     return;
                 }
@@ -9227,132 +9838,127 @@ Selesai Bang.`
                 }
             }
 
+// =================================================
+            // FITUR HAPUS BACKGROUND (AI REPLICATE)
             // =================================================
-            // REMOVE BACKGROUND (reply foto / caption !removebg) → PNG
-            // =================================================
-            if (cmd === "!removebg") {
-                let buffer = null;
+            if (cmd === "!removebg" || cmd === "!nobg") {
+                // Cek apakah ada gambar?
+                const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
+                const isImage = msg.message.imageMessage;
+
+                if (!isQuotedImage && !isImage) {
+                    return sock.sendMessage(from, { text: "⚠️ Kirim/Reply foto dengan caption *!removebg*" }, { quoted: msg });
+                }
+
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+                await sock.sendMessage(from, { text: "Tunggu sebentar" }, { quoted: msg });
 
                 try {
-                    // 1) Kalau langsung kirim foto + caption !removebg
-                    if (type === "imageMessage") {
-                        buffer = await downloadMediaMessage(msg, "buffer");
-                    } else {
-                        // 2) Kalau pakai reply ke foto
-                        const ctx = msg.message?.extendedTextMessage?.contextInfo;
-                        const quotedImg = ctx?.quotedMessage?.imageMessage;
-
-                        if (!quotedImg) {
-                            await sock.sendMessage(from, {
-                                text: "Kirim foto dengan caption *!removebg* atau reply ke foto lalu ketik *!removebg*, Bang."
-                            });
-                            return;
-                        }
-
-                        buffer = await downloadMediaMessage(
-                            { message: ctx.quotedMessage },
-                            "buffer"
+                    // 1. Download Gambar
+                    let mediaBuffer;
+                    if (isQuotedImage) {
+                        mediaBuffer = await downloadMediaMessage(
+                            { message: msg.message.extendedTextMessage.contextInfo.quotedMessage }, 'buffer', {}
                         );
+                    } else {
+                        mediaBuffer = await downloadMediaMessage(msg, 'buffer', {});
                     }
 
-                    const ts = Date.now();
-                    const inPath = `./rmbg_in_${ts}.png`;
-                    const outPath = `./rmbg_out_${ts}.png`;
+                    // 2. Convert ke Base64 (Format yang diminta Replicate)
+                    const base64Image = `data:image/jpeg;base64,${mediaBuffer.toString('base64')}`;
 
-                    fs.writeFileSync(inPath, buffer);
+                    // 3. Kirim ke Replicate (Model: cjwbw/rembg)
+                    // Model ini khusus buat hapus background, hasilnya rapi banget
+                    const output = await replicate.run(
+                        "cjwbw/rembg:fb8af171cfa1616ddcf1242c093f9c46bcada5ad4cf6f2fbe8b81b330ec5c003",
+                        {
+                            input: {
+                                image: base64Image
+                            }
+                        }
+                    );
 
-                    await sock.sendMessage(from, {
-                        text: "Proses Bang!"
-                    });
+                    // Output berupa URL gambar PNG transparan
+                    if (output) {
+                        // 4. Kirim hasilnya ke User (Sebagai Dokumen biar transparan-nya terjaga)
+                        await sock.sendMessage(from, { 
+                            document: { url: output }, 
+                            mimetype: "image/png",
+                            fileName: "no-bg.png",
+                            caption: "Sukses Hapus Background!"
+                        }, { quoted: msg });
+                        
+                        // Opsional: Kirim sebagai Sticker juga kalau mau langsung jadi stiker
+                        // (Kalau abang mau fitur !sticker nobg, bisa integrasikan logika ini ke sana)
+                        
+                    } else {
+                        throw new Error("Output AI kosong.");
+                    }
 
-                    // rembg CLI (pastikan sudah: rembg --help di CMD jalan)
-                    await execAsync(`"${process.env.USERPROFILE}\\AppData\\Roaming\\Python\\Python311\\Scripts\\rembg.exe" i "${inPath}" "${outPath}"`);
-
-                    const resultBuf = fs.readFileSync(outPath);
-
-                    // Kirim balik PNG transparan
-                    await sock.sendMessage(from, {
-                        image: resultBuf,
-                        mimetype: "image/png",
-                        caption: "Selesai Bang, background sudah dihapus (PNG transparan)."
-                    });
-
-                    // Bersihkan file sementara
-                    fs.unlinkSync(inPath);
-                    fs.unlinkSync(outPath);
-
-                } catch (err) {
-                    console.error("RemoveBG error:", err);
-                    await sock.sendMessage(from, {
-                        text: `Gagal menghapus background.\nError: ${err.message || err}`
-                    });
+                } catch (e) {
+                    console.error("RemoveBG Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Gagal menghapus background. Pastikan objek di foto terlihat jelas." }, { quoted: msg });
                 }
             }
 
-            // di atas, paling enak tambah:
-            const path = require("path");
-
+// =================================================
+            // FITUR HD / REMINI (AI REPLICATE)
             // =================================================
-            // HD — UPSCALE 2x OFFLINE (Real-ESRGAN)
-            // Command: !hd
-            // =================================================
-            if (cmd === "!hd") {
-                const buf = await getQuotedMediaBuffer(msg);
-
-                if (!buf && type !== "imageMessage") {
-                    await sock.sendMessage(from, {
-                        text: "Kirim foto + caption *!hd* atau reply ke foto lalu ketik *!hd*, Bang."
-                    });
-                    return;
+            if (cmd === "!hd" || cmd === "!remini" || cmd === "!perjelas") {
+                // Cek apakah ada gambar?
+                const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
+                const isImage = msg.message.imageMessage;
+                
+                if (!isQuotedImage && !isImage) {
+                    return sock.sendMessage(from, { text: "⚠️ Kirim/Reply foto burik dengan caption *!hd*" }, { quoted: msg });
                 }
 
-                let imageBuffer = buf;
-                if (!imageBuffer && type === "imageMessage") {
-                    imageBuffer = await downloadMediaMessage(msg, "buffer");
-                }
-
-                const ts = Date.now();
-                const inPath  = path.resolve(`./hd_in_${ts}.png`);
-                const outPath = path.resolve(`./hd_out_${ts}.png`);
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+                await sock.sendMessage(from, { text: "Proses..." }, { quoted: msg });
 
                 try {
-                    fs.writeFileSync(inPath, imageBuffer);
+                    // 1. Download Gambar
+                    let mediaBuffer;
+                    if (isQuotedImage) {
+                        mediaBuffer = await downloadMediaMessage(
+                            { message: msg.message.extendedTextMessage.contextInfo.quotedMessage }, 'buffer', {}
+                        );
+                    } else {
+                        mediaBuffer = await downloadMediaMessage(msg, 'buffer', {});
+                    }
 
-                    await sock.sendMessage(from, {
-                        text: "Proses Bang!"
-                    });
+                    // 2. Convert ke Base64 (Wajib buat Replicate)
+                    const base64Image = `data:image/jpeg;base64,${mediaBuffer.toString('base64')}`;
 
-                    // Lokasi Real-ESRGAN-mu
-                    // Sementara matikan dulu path windows-nya biar ga error crash
-                    const esrganExe = "realesrgan-ncnn-vulkan";
+                    // 3. Kirim ke Replicate (Model: Real-ESRGAN)
+                    // Model ini jago banget bikin foto pecah jadi tajem (Upscale 4x)
+                    const output = await replicate.run(
+                        "nightmareai/real-esrgan:42fed1c4974146d4d2414e2be2c5277c7fcf05fccffa9990142941f540251853",
+                        {
+                            input: {
+                                image: base64Image,
+                                scale: 4, // Perbesar 4x lipat
+                                face_enhance: true // Perbaiki wajah juga
+                            }
+                        }
+                    );
 
-                    // Model terbaik 2x yg kamu punya
-                    const modelName = "realesr-animevideov3-x2";
-                    const scale = 2;
+                    // Output Replicate biasanya langsung URL gambar hasil
+                    if (output) {
+                        await sock.sendMessage(from, { 
+                            image: { url: output }, 
+                            caption: "*SUKSES JADI HD!*"
+                        }, { quoted: msg });
 
-                    const cmdUpscale =
-                        `${esrganExe} -i "${inPath}" -o "${outPath}" -s ${scale} -n ${modelName}`;
+                        await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+                    } else {
+                        throw new Error("Hasil AI kosong.");
+                    }
 
-                    await execAsync(cmdUpscale);
-
-                    const result = fs.readFileSync(outPath);
-
-                    await sock.sendMessage(from, {
-                        image: result,
-                        caption: "Selesai Bang, Foto sudah HD."
-                    });
-
-                } catch (err) {
-                    console.error("HD error:", err);
-                    await sock.sendMessage(from, {
-                        text: "Gagal membuat foto jadi HD. Pastikan Real-ESRGAN sudah terinstal dengan benar."
-                    });
-                } finally {
-                    if (fs.existsSync(inPath)) fs.unlinkSync(inPath);
-                    if (fs.existsSync(outPath)) fs.unlinkSync(outPath);
+                } catch (e) {
+                    console.error("HD Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Gagal memproses gambar. Pastikan server Replicate aman." }, { quoted: msg });
                 }
-
-                return;
             }
 
             // =================================================
@@ -10732,71 +11338,127 @@ Percobaan: ${f100.tries}/5`
                 return;
             }
 
-            // --- FITUR QURAN ---
+            // 2. AL-QURAN (AYAT & AUDIO)
             if (cmd === "!quran" || cmd === "!ngaji") {
-                const surahNo = teks.replace(cmd, "").trim();
-                if (!surahNo || isNaN(surahNo)) return sock.sendMessage(from, { text: "Mau baca surat ke berapa? Contoh: *!quran 1* (Al-Fatihah)" }, { quoted: msg });
+                const args = teks.split(" ");
+                // Format: !quran 1 1 (Surah ke-1, Ayat ke-1)
+                const surat = args[1];
+                const ayat = args[2];
+
+                if (!surat || !ayat) {
+                    return sock.sendMessage(from, { 
+                        text: `⚠️ Format salah Bang.\nContoh: *${cmd} 1 5*\n_(Artinya: Surah Al-Fatihah ayat 5)_` 
+                    }, { quoted: msg });
+                }
+
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
-                    await sock.sendMessage(from, { text: "Proses Bang..." }, { quoted: msg });
+                    // Pakai API EQuran.id
+                    const url = `https://equran.id/api/v2/surat/${surat}`;
+                    const { data: res } = await axios.get(url);
 
-                    // API Public EQuran.id
-                    const { data } = await axios.get(`https://equran.id/api/v2/surat/${surahNo}`);
-                    const surah = data.data;
-
-                    let reply = `*${surah.namaLatin}* (${surah.arti})\n`;
-                    reply += `Jumlah Ayat: ${surah.jumlahAyat} | Turun di: ${surah.tempatTurun}\n\n`;
-
-                    // Ambil max 5 ayat pertama biar ga kepanjangan (bisa diubah)
-                    // Kalau mau semua ayat, hapus .slice(0, 5)
-                    surah.ayat.slice(0, 5).forEach(a => {
-                        reply += `*Ayat ${a.nomorAyat}:*\n${a.teksArab}\n${a.teksLatin}\n\n"${a.teksIndonesia}"\n\n`;
-                    });
-
-                    reply += `_Menampilkan 5 ayat pertama..._`;
-
-                    // Kirim Audio Murottal (Opsional)
-                    if (surah.audioFull && surah.audioFull['05']) {
-                        await sock.sendMessage(from, { audio: { url: surah.audioFull['05'] }, mimetype: 'audio/mp4' }, { quoted: msg });
+                    if (res.code !== 200) {
+                        return sock.sendMessage(from, { text: "Surah tidak ditemukan." }, { quoted: msg });
                     }
 
-                    await sock.sendMessage(from, { text: reply }, { quoted: msg });
+                    const dataSurat = res.data;
+                    const dataAyat = dataSurat.ayat.find(a => a.nomorAyat == ayat);
 
-                } catch (err) {
-                    await sock.sendMessage(from, { text: "Surat tidak ditemukan atau server error." }, { quoted: msg });
+                    if (!dataAyat) {
+                        return sock.sendMessage(from, { text: `Ayat ke-${ayat} tidak ada di surah ini.` }, { quoted: msg });
+                    }
+
+                    const pesanQuran = 
+`*AL-QURAN DIGITAL*
+
+Surah: *${dataSurat.namaLatin}* (${dataSurat.arti})
+Ayat: *${ayat}*
+
+${dataAyat.teksArab}
+
+*Artinya:*
+"${dataAyat.teksIndonesia}"
+
+_Audio sedang dikirim..._`;
+
+                    // Kirim Teks
+                    await sock.sendMessage(from, { text: pesanQuran }, { quoted: msg });
+
+                    // Kirim Audio Ayat (Kalau ada)
+                    if (dataAyat.audio && dataAyat.audio['05']) {
+                        await sock.sendMessage(from, { 
+                            audio: { url: dataAyat.audio['05'] }, 
+                            mimetype: 'audio/mp4', 
+                            ptt: true // Kirim sebagai VN
+                        }, { quoted: msg });
+                    }
+
+                } catch (e) {
+                    console.error("Quran Error:", e);
+                    await sock.sendMessage(from, { text: "Gagal mengambil ayat." }, { quoted: msg });
                 }
-                return;
             }
 
-            // --- FITUR KISAH NABI ---
+            // 3. KISAH NABI
             if (cmd === "!kisahnabi" || cmd === "!nabi") {
-                const namaNabi = teks.replace(cmd, "").trim().toLowerCase();
-                if (!namaNabi) return sock.sendMessage(from, { text: "Masukan nama nabi Bang. Contoh: *!kisahnabi yusuf*" }, { quoted: msg });
+                const nabi = teks.replace(cmd, "").trim().toLowerCase();
+
+                if (!nabi) {
+                    return sock.sendMessage(from, { 
+                        text: `⚠️ Masukkan nama Nabinya Bang.\nContoh: *${cmd} adam*` 
+                    }, { quoted: msg });
+                }
 
                 try {
-                    // Ambil Database JSON Kisah Nabi
-                    const { data } = await axios.get('https://raw.githubusercontent.com/Zhirrr/My-SQL-Results/master/data/kisahnabi.json');
-                    
-                    // Cari Nabi
-                    const nabi = data.find(n => n.name.toLowerCase() === namaNabi);
+                    const url = `https://raw.githubusercontent.com/Zhirrr/My-SQL-Results/master/kisahnabi/${nabi}.json`;
+                    const { data } = await axios.get(url);
 
-                    if (!nabi) {
-                        return sock.sendMessage(from, { text: "Nabi tidak ditemukan. Pastikan ejaan benar (25 Nabi)." }, { quoted: msg });
+                    if (!data || !data.name) {
+                        return sock.sendMessage(from, { text: "❌ Kisah nabi tersebut tidak ditemukan." }, { quoted: msg });
                     }
 
-                    const reply = `*KISAH NABI ${nabi.name.toUpperCase()}*\n\nLahir: ${nabi.thn_kelahiran}\nTempat: ${nabi.tmp}\nUsia: ${nabi.usia} tahun\n\n*KISAH:*\n${nabi.description}`;
+                    const kisah = 
+`*KISAH NABI ${data.name.toUpperCase()}*
+*Lahir:* ${data.thn_kelahiran}
+*Tempat:* ${data.tmp}
+*Usia:* ${data.usia}
 
-                    // Kirim Gambar (Thumbnail) jika ada
-                    if (nabi.image_url) {
-                        await sock.sendMessage(from, { image: { url: nabi.image_url }, caption: reply }, { quoted: msg });
-                    } else {
-                        await sock.sendMessage(from, { text: reply }, { quoted: msg });
-                    }
+*Cerita:*
+${data.description}`;
 
-                } catch (err) {
-                    await sock.sendMessage(from, { text: "Gagal mengambil kisah nabi." }, { quoted: msg });
+                    // Kirim gambar thumbnail (dari data image)
+                    await sock.sendMessage(from, { 
+                        image: { url: data.image }, 
+                        caption: kisah 
+                    }, { quoted: msg });
+
+                } catch (e) {
+                    await sock.sendMessage(from, { text: "Gagal mengambil kisah nabi. Pastikan ejaan nama benar." }, { quoted: msg });
                 }
-                return;
+            }
+
+            // 4. ASMAUL HUSNA (RANDOM)
+            if (cmd === "!asmaulhusna") {
+                try {
+                    const url = "https://raw.githubusercontent.com/BochilTeam/database/master/agama/asmaulhusna.json";
+                    const { data } = await axios.get(url);
+                    
+                    // Ambil random
+                    const randomAsma = data[Math.floor(Math.random() * data.length)];
+
+                    const pesanAsma = 
+`*ASMAUL HUSNA*
+
+*Arab:* ${randomAsma.arabic}
+*Latin:* ${randomAsma.latin}
+*Artinya:* "${randomAsma.translation_id}"`;
+
+                    await sock.sendMessage(from, { text: pesanAsma }, { quoted: msg });
+
+                } catch (e) {
+                    await sock.sendMessage(from, { text: "Gagal mengambil data." }, { quoted: msg });
+                }
             }
 
             // --- FITUR DOA HARIAN ---
@@ -10816,6 +11478,100 @@ Percobaan: ${f100.tries}/5`
                     await sock.sendMessage(from, { text: "Gagal mengambil data doa." }, { quoted: msg });
                 }
                 return;
+            }
+
+// =================================================
+            // MENU UMUM & TOLERANSI
+            // =================================================
+
+            // 1. ALKITAB (KRISTEN/KATOLIK)
+            if (cmd === "!alkitab" || cmd === "!injil") {
+                const query = teks.replace(cmd, "").trim();
+
+                if (!query) {
+                    return sock.sendMessage(from, { 
+                        text: `⚠️ Mau cari ayat apa Bang?\nContoh: *${cmd} Yohanes 3:16*` 
+                    }, { quoted: msg });
+                }
+
+                try {
+                    // Menggunakan API publik untuk Alkitab (Terjemahan Baru)
+                    const url = `https://beeble.me/api/v1/passage/${encodeURIComponent(query)}`;
+                    const { data } = await axios.get(url);
+
+                    if (!data || !data.data || data.data.length === 0) {
+                        return sock.sendMessage(from, { text: "❌ Ayat tidak ditemukan. Pastikan penulisan benar (cth: Matius 1:1)." }, { quoted: msg });
+                    }
+
+                    const result = data.data[0];
+                    const verses = result.verses.map(v => `*${v.verse}.* ${v.text}`).join("\n");
+
+                    const pesanAlkitab = 
+`*ALKITAB DIGITAL*
+
+*Kitab:* ${result.book.name}
+*Pasal:* ${result.chapter}
+
+${verses}
+
+_Semoga memberkati Bang!_`;
+
+                    await sock.sendMessage(from, { text: pesanAlkitab }, { quoted: msg });
+
+                } catch (e) {
+                    console.error("Alkitab Error:", e);
+                    await sock.sendMessage(from, { text: "Gagal mengambil ayat. Server sedang sibuk." }, { quoted: msg });
+                }
+            }
+
+            // 2. MOTIVASI (UNIVERSAL/NETRAL)
+            if (cmd === "!motivasi" || cmd === "!bijak") {
+                // Database kata-kata bijak (Bisa ditambahin sendiri)
+                const quotes = [
+                    "Janganlah kegelapan masa lalu menutupi cahaya masa depan.",
+                    "Satu-satunya cara untuk melakukan pekerjaan hebat adalah dengan mencintai apa yang kamu lakukan.",
+                    "Kesuksesan bukanlah kunci kebahagiaan. Kebahagiaanlah kunci kesuksesan.",
+                    "Hidup itu seperti sepeda. Agar tetap seimbang, kau harus terus bergerak.",
+                    "Jangan menunggu peluang, ciptakanlah peluang itu.",
+                    "Mimpi tidak akan menjadi kenyataan melalui sihir; itu membutuhkan keringat, tekad, dan kerja keras.",
+                    "Kegagalan adalah bumbu yang memberi rasa pada kesuksesan.",
+                    "Jadilah versi terbaik dari dirimu sendiri, bukan versi kedua dari orang lain.",
+                    "Tuhan tidak akan memberi cobaan melampaui batas kemampuan hamba-Nya.",
+                    "Berbuat baiklah tanpa perlu alasan."
+                ];
+
+                const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+
+                const pesanMotivasi = 
+`*KATA BIJAK HARI INI*
+
+"${randomQuote}"
+
+_Tetap semangat Bang!_`;
+
+                await sock.sendMessage(from, { text: pesanMotivasi }, { quoted: msg });
+            }
+
+            // 3. FAKTA UNIK (PENGETAHUAN UMUM)
+            if (cmd === "!faktaunik" || cmd === "!fakta") {
+                const fakta = [
+                    "Madu adalah satu-satunya makanan yang tidak bisa basi.",
+                    "Siput bisa tidur selama 3 tahun.",
+                    "Nama paling umum di dunia adalah Mohammed.",
+                    "Otot terkuat di tubuh manusia adalah lidah.",
+                    "Perempuan berkedip dua kali lebih banyak dari laki-laki.",
+                    "Semut tidak pernah tidur.",
+                    "Coca-Cola awalnya berwarna hijau.",
+                    "Indonesia adalah negara kepulauan terbesar di dunia.",
+                    "Jerapah membersihkan telinganya dengan lidah sendiri.",
+                    "Manusia tidak bisa menjilat sikunya sendiri (Coba aja kalau gak percaya)."
+                ];
+
+                const randomFakta = fakta[Math.floor(Math.random() * fakta.length)];
+
+                await sock.sendMessage(from, { 
+                    text: `*TAHUKAH KAMU?*\n\n${randomFakta}` 
+                }, { quoted: msg });
             }
 
         // =====================================================
