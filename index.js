@@ -197,10 +197,15 @@ const activeConfess = {};
 const msgLog = {}; // Tempat nyimpen riwayat chat
 const NOMOR_OWNER = "628975800981@s.whatsapp.net"; // Ganti No WA Abang (pake @s.whatsapp.net)
 
-// --- CONFIG GEMINI AI ---
+// --- CONFIG GEMINI AI (VERSI STABIL) ---
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+
+// 1. Model buat Chat (Text Only)
+const modelText = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+// 2. Model buat Lihat Gambar (Vision)
+const modelVis = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
 
 const moment = require('moment-timezone');
 const yts = require('yt-search');
@@ -4245,7 +4250,6 @@ _Untuk membalas balik, gunakan command *!confess* lagi._`;
                 }
 
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
-                await sock.sendMessage(from, { text: "Proses..." }, { quoted: msg });
 
                 try {
                     // KITA PAKAI API "TIKLYDOWN" (Lebih Stabil & Gratis)
@@ -4361,8 +4365,7 @@ _Video dikirim tanpa watermark!_`;
                     return sock.sendMessage(from, { text: `⚠️ Link Instagram-nya mana Bang?\nContoh: *${cmd} https://www.instagram.com/reel/xxxx/*` }, { quoted: msg });
                 }
 
-                await sock.sendMessage(from, { react: { text: "⬇️", key: msg.key } });
-                await sock.sendMessage(from, { text: "⏳ Sedang mendownload dari Instagram... (Gallery-DL)" }, { quoted: msg });
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
                     // Buat folder sementara unik
@@ -4952,34 +4955,32 @@ _Sedang mengambil audio..._`;
             }
 
 // =================================================
-            // FITUR CURHAT V2 (GEMINI AI - GRATIS)
+            // FITUR CURHAT V2.1 (GEMINI PRO)
             // =================================================
-            if (cmd === "!curhat" || cmd === "!saran") {
+            if (cmd === "!curhat" || cmd === "!saran" || cmd === "!ai") {
                 const curhatan = teks.replace(cmd, "").trim();
 
                 if (!curhatan) {
-                    return sock.sendMessage(from, { 
-                        text: `⚠️ Mau curhat apa Bang?\nContoh: *${cmd} Aku lagi capek banget kerja*` 
-                    }, { quoted: msg });
+                    return sock.sendMessage(from, { text: `⚠️ Mau curhat apa Bang?\nContoh: *${cmd} Aku lagi galau*` }, { quoted: msg });
                 }
 
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
                 
                 try {
-                    // Setting instruksi biar Gemini jadi teman gaul
-                    const prompt = `Kamu adalah 'BangBot', teman yang asik, gaul, lucu, dan bijak. Jawab curhatan user ini dengan bahasa santai (lo-gue) layaknya teman dekat. Jangan kaku. Berikan solusi jika perlu.
-                    
+                    const prompt = `Kamu adalah 'BangBot', teman yang asik, gaul, lucu, dan bijak. Jawab curhatan user ini dengan bahasa santai (lo-gue).
                     Curhatan User: "${curhatan}"`;
 
-                    const result = await model.generateContent(prompt);
+                    // PENTING: Pakai 'modelText'
+                    const result = await modelText.generateContent(prompt);
                     const response = await result.response;
                     const text = response.text();
 
                     await sock.sendMessage(from, { text: text }, { quoted: msg });
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
-                    console.error("Gemini Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Otak AI lagi error Bang, coba lagi nanti." }, { quoted: msg });
+                    console.error("Gemini Text Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Maaf Bang, otak AI lagi error." }, { quoted: msg });
                 }
             }
 
@@ -4996,7 +4997,6 @@ _Sedang mengambil audio..._`;
                 }
 
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
-                await sock.sendMessage(from, { text: `Sedang mencari resep *"${query}"*...` }, { quoted: msg });
 
                 try {
                     // Panggil fungsi scraper yang kita buat di bawah tadi
@@ -5008,9 +5008,7 @@ _Sedang mengambil audio..._`;
 
                     // Susun Pesan
                     const captionResep = 
-`👨‍🍳 *BUKU RESEP BANGBOT* 👨‍🍳
-
-*Judul:* ${resep.judul}
+`*Judul:* ${resep.judul}
 *Waktu:* ${resep.waktu}
 *Porsi:* ${resep.porsi}
 
@@ -5051,7 +5049,7 @@ ${resep.langkah}
                     }, { quoted: msg });
                 }
 
-                await sock.sendMessage(from, { react: { text: "🔮", key: msg.key } });
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
                     const arti = await artiNama(nama);
@@ -9913,7 +9911,6 @@ Selesai Bang.`
                 }
 
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
-                await sock.sendMessage(from, { text: "Tunggu sebentar" }, { quoted: msg });
 
                 try {
                     // 1. Download Gambar
@@ -9976,7 +9973,6 @@ Selesai Bang.`
                 }
 
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
-                await sock.sendMessage(from, { text: "Proses..." }, { quoted: msg });
 
                 try {
                     // 1. Download Gambar
