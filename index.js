@@ -7674,7 +7674,8 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
             }
 
 // =================================================
-            // FITUR LIRIK (DUCKDUCKGO -> KAPANLAGI)
+            // FITUR LIRIK (VIA LIBRARY GENIUS-LYRICS)
+            // ✅ WAJIB INSTALL: "genius-lyrics": "^4.4.0"
             // =================================================
             if (cmd === "!lirik" || cmd === "!lyrics") {
                 let songName = teks.replace(/!lirik|lirik|!lyrics|lyrics/gi, "").trim();
@@ -7683,89 +7684,57 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                     return sock.sendMessage(from, { text: "⚠️ Mau cari lagu apa Bang?\nContoh: *!lirik Komang*" }, { quoted: msg });
                 }
 
-                console.log(`[LIRIK] Mencari via DuckDuckGo: ${songName}`);
+                console.log(`[LIRIK] Mencari via Library: ${songName}`);
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
-                    const cheerio = require("cheerio");
+                    // Panggil Library Genius
+                    const Genius = require("genius-lyrics");
+                    const Client = new Genius.Client(); // Gak perlu API Key, dia bisa mode gratis
 
-                    // 1. CARI LINK PAKAI DUCKDUCKGO (Lebih aman dari Google)
-                    // Kita cari khusus di situs lirik.kapanlagi.com
-                    const searchUrl = `https://html.duckduckgo.com/html/?q=site:lirik.kapanlagi.com+${encodeURIComponent(songName)}`;
-                    
-                    const { data: searchHtml } = await axios.get(searchUrl, {
-                        headers: { 
-                            // Pura-pura jadi browser HP biar gak diblokir
-                            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36'
-                        }
-                    });
+                    // 1. Cari Lagu
+                    const searches = await Client.songs.search(songName);
 
-                    const $ = cheerio.load(searchHtml);
-                    
-                    // Ambil link pertama dari hasil pencarian DuckDuckGo (class .result__a)
-                    let targetUrl = null;
-                    $(".result__a").each((i, el) => {
-                        const link = $(el).attr("href");
-                        if (link && link.includes("lirik.kapanlagi.com/artis/") && !targetUrl) {
-                            // DuckDuckGo kadang ngasih link redirect, kita ambil parameter uddg-nya kalau ada
-                            if (link.includes("uddg=")) {
-                                targetUrl = decodeURIComponent(link.split("uddg=")[1].split("&")[0]);
-                            } else {
-                                targetUrl = link;
-                            }
-                        }
-                    });
-
-                    if (!targetUrl) {
-                        return sock.sendMessage(from, { text: `❌ Lirik *"${songName}"* tidak ditemukan (DuckDuckGo).` }, { quoted: msg });
+                    // 2. Cek Hasil
+                    if (!searches || searches.length === 0) {
+                        return sock.sendMessage(from, { text: `❌ Lagu *"${songName}"* tidak ditemukan.` }, { quoted: msg });
                     }
 
-                    console.log(`[LIRIK] Target Link: ${targetUrl}`);
+                    // Ambil hasil paling atas (paling relevan)
+                    const firstSong = searches[0];
 
-                    // 2. SCRAPING HALAMAN KAPANLAGI
-                    const { data: lyricsHtml } = await axios.get(targetUrl, {
-                        headers: { 
-                            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36'
-                        }
-                    });
-                    
-                    const $$ = cheerio.load(lyricsHtml);
-                    
-                    // Ambil Judul & Artis
-                    const title = $$(".song-title").text().trim() || $$("h1").text().trim() || songName;
-                    const artist = $$(".artist-name").text().trim() || "Unknown Artist";
+                    console.log(`[LIRIK] Menemukan: ${firstSong.title} - ${firstSong.artist.name}`);
 
-                    // Ambil Lirik (Parsing Baris per Baris biar rapi)
-                    let lyrics = "";
-                    
-                    // Coba selektor span.lirik_line (Format Baru)
-                    $$("span.lirik_line").each((i, el) => {
-                        lyrics += $$(el).text().trim() + "\n";
-                    });
+                    // 3. Ambil Liriknya (Library yang urus scrapingnya)
+                    const lyrics = await firstSong.lyrics();
 
-                    // Coba selektor div.lirik_line (Format Lama)
-                    if (!lyrics.trim()) {
-                        lyrics = $$("div.lirik_line").text().trim();
+                    if (!lyrics) {
+                         return sock.sendMessage(from, { text: "❌ Lirik tidak tersedia untuk lagu ini." }, { quoted: msg });
                     }
 
-                    // Fallback Terakhir (Ambil body kalau kepepet)
-                    if (!lyrics.trim()) {
-                         return sock.sendMessage(from, { text: "❌ Link ketemu, tapi format web KapanLagi berubah." }, { quoted: msg });
-                    }
-
-                    // 3. KIRIM HASIL
-                    let caption = `*${title}*\n`;
-                    caption += `*Artist:* ${artist}\n`;
-                    caption += `*Source:* KapanLagi.com\n`;
+                    // 4. Susun Pesan
+                    let caption = `*${firstSong.title}*\n`;
+                    caption += `*Artist:* ${firstSong.artist.name}\n`;
                     caption += `──────────────────\n\n`;
-                    caption += `${lyrics.trim()}`;
+                    caption += `${lyrics}`;
 
-                    await sock.sendMessage(from, { text: caption }, { quoted: msg });
+                    // 5. Kirim (Pakai Gambar dari Library)
+                    await sock.sendMessage(from, { 
+                        image: { url: firstSong.image },
+                        caption: caption
+                    }, { quoted: msg });
+
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
                     console.error("[LIRIK] Error:", e.message);
-                    await sock.sendMessage(from, { text: "❌ Terjadi kesalahan koneksi." }, { quoted: msg });
+                    
+                    // Cek kalau user lupa install library
+                    if (e.code === 'MODULE_NOT_FOUND' || e.message.includes("genius-lyrics")) {
+                        await sock.sendMessage(from, { text: "⚠️ *ERROR SYSTEM*\nModul `genius-lyrics` belum terinstall!\n\nCek file package.json Abang." }, { quoted: msg });
+                    } else {
+                        await sock.sendMessage(from, { text: "❌ Gagal mengambil lirik. Coba judul yang lebih spesifik." }, { quoted: msg });
+                    }
                 }
             }
 
