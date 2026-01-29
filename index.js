@@ -7674,9 +7674,7 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
             }
 
 // =================================================
-            // FITUR LIRIK (GENIUS SCRAPER)
-            // 🔗 CEK API SEARCH: https://genius.com/api/search/multi?q=Komang
-            // 🔗 CEK WEB (SOURCE): https://genius.com
+            // FITUR LIRIK (KAPANLAGI SCRAPER - KEARIFAN LOKAL)
             // =================================================
             if (cmd === "!lirik" || cmd === "!lyrics") {
                 let songName = teks.replace(/!lirik|lirik|!lyrics|lyrics/gi, "").trim();
@@ -7685,83 +7683,90 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                     return sock.sendMessage(from, { text: "⚠️ Mau cari lagu apa Bang?\nContoh: *!lirik Komang*" }, { quoted: msg });
                 }
 
-                console.log(`[LIRIK] Mencari di Genius: ${songName}`);
+                console.log(`[LIRIK] Mencari di KapanLagi: ${songName}`);
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
-                    // Wajib ada Cheerio di package.json
                     const cheerio = require("cheerio");
 
-                    // 1. TAHAP SEARCH (Mencari Link)
-                    const searchRes = await axios.get(`https://genius.com/api/search/multi?per_page=5&q=${encodeURIComponent(songName)}`);
-                    const sections = searchRes.data.response.sections;
-                    let hit = null;
+                    // 1. Cari Link KapanLagi via Google
+                    // Kita pakai User-Agent HP biar Google ngasih hasil yang enteng
+                    const searchUrl = `https://www.google.com/search?q=site:lirik.kapanlagi.com+${encodeURIComponent(songName)}&hl=id`;
+                    const { data: searchHtml } = await axios.get(searchUrl, {
+                        headers: { 
+                            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36'
+                        }
+                    });
+
+                    const $ = cheerio.load(searchHtml);
                     
-                    // Mencari hasil lagu terbaik dari beberapa section (top_hit/song)
-                    for (let section of sections) {
-                        if (section.type === 'song' || section.type === 'top_hit') {
-                            if (section.hits && section.hits.length > 0) {
-                                hit = section.hits[0].result;
-                                break;
+                    // Ambil link pertama yang mengarah ke lirik.kapanlagi.com
+                    let targetUrl = null;
+                    $("a").each((i, el) => {
+                        const link = $(el).attr("href");
+                        if (link && link.includes("lirik.kapanlagi.com/artis/") && !targetUrl) {
+                            // Google kadang ngasih link kotor (/url?q=...), kita bersihin
+                            if (link.startsWith("/url?q=")) {
+                                targetUrl = link.split("/url?q=")[1].split("&")[0];
+                            } else {
+                                targetUrl = link;
                             }
                         }
+                    });
+
+                    if (!targetUrl) {
+                        return sock.sendMessage(from, { text: `❌ Lirik *"${songName}"* tidak ditemukan di KapanLagi.` }, { quoted: msg });
                     }
 
-                    if (!hit) {
-                        return sock.sendMessage(from, { text: `❌ Lagu *"${songName}"* tidak ditemukan di database Genius.` }, { quoted: msg });
-                    }
+                    console.log(`[LIRIK] Scraping: ${targetUrl}`);
 
-                    console.log(`[LIRIK] Scraping dari: ${hit.url}`);
-
-                    // 2. TAHAP SCRAPING (Mengambil Teks dari Web)
-                    const { data: html } = await axios.get(hit.url, {
-                        headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36'
+                    // 2. Buka Link KapanLagi & Ambil Isinya
+                    const { data: lyricsHtml } = await axios.get(targetUrl, {
+                        headers: { 
+                            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36'
                         }
                     });
-                    const $ = cheerio.load(html);
+                    
+                    const $$ = cheerio.load(lyricsHtml);
+                    
+                    // KapanLagi naruh lirik di class .lirik_line atau div body
+                    // Kita ambil Judul dulu
+                    const title = $$(".song-title").text().trim() || $$("h1").text().trim() || songName;
+                    const artist = $$(".artist-name").text().trim() || "Unknown Artist";
 
+                    // Ambil Lirik
                     let lyrics = "";
-                    // Selector Container Lirik Genius terbaru
-                    $('div[data-lyrics-container="true"]').each((i, el) => {
-                        $(el).find('br').replaceWith('\n'); // Ubah <br> jadi enter
-                        lyrics += $(el).text() + "\n\n";
+                    
+                    // Coba ambil dari container utama
+                    // KapanLagi kadang misahin per baris pake <br> atau span
+                    $$("span.lirik_line").each((i, el) => {
+                        lyrics += $$(el).text().trim() + "\n";
                     });
 
-                    // Pembersihan teks (menghapus tag [Chorus], [Verse], dll jika ingin lebih bersih)
-                    // lyrics = lyrics.replace(/\[.*?\]/g, ''); 
-
+                    // Fallback kalau span.lirik_line kosong (format lama)
                     if (!lyrics.trim()) {
-                        // Fallback ke selector lama jika struktur web berbeda
-                        lyrics = $(".lyrics").text().trim();
+                        lyrics = $$("div.lirik_line").text().trim();
                     }
 
                     if (!lyrics.trim()) {
-                        return sock.sendMessage(from, { text: "❌ Lirik ditemukan, tapi gagal diekstrak. Website Genius mungkin sedang update struktur." }, { quoted: msg });
+                        return sock.sendMessage(from, { text: "❌ Link ketemu, tapi gagal ambil teks (format web berubah)." }, { quoted: msg });
                     }
 
-                    // 3. SUSUN PESAN & KIRIM
-                    let caption = `*${hit.title}*\n`;
-                    caption += `*Artist:* ${hit.artist_names}\n`;
+                    // 3. Kirim Hasil
+                    let caption = `*${title}*\n`;
+                    caption += `*Artist:* ${artist}\n`;
+                    caption += `*Source:* KapanLagi.com\n`;
                     caption += `──────────────────\n\n`;
                     caption += `${lyrics.trim()}`;
 
-                    await sock.sendMessage(from, { 
-                        image: { url: hit.song_art_image_url || hit.header_image_url },
-                        caption: caption
-                    }, { quoted: msg });
+                    // Kirim Teks Only (Biar aman anti-error gambar)
+                    await sock.sendMessage(from, { text: caption }, { quoted: msg });
 
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
                     console.error("[LIRIK] Error:", e.message);
-                    let errMsg = "❌ Terjadi kesalahan saat mengambil lirik.";
-                    
-                    if (e.message.includes("cheerio")) {
-                        errMsg = "⚠️ *ERROR:* Modul `cheerio` belum ada!\nTambahkan `\"cheerio\": \"^1.0.0\"` di package.json.";
-                    }
-                    
-                    await sock.sendMessage(from, { text: errMsg }, { quoted: msg });
+                    await sock.sendMessage(from, { text: "❌ Terjadi kesalahan saat scraping Google/KapanLagi." }, { quoted: msg });
                 }
             }
 
