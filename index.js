@@ -229,7 +229,7 @@ process.on('unhandledRejection', (reason, p) => {
 
 process.on('uncaughtException', (err) => {
     console.error('UNCAUGHT EXCEPTION:', err);
-});n
+});
 
 // Fungsi ambil daftar blacklist
 const getBlacklist = () => {
