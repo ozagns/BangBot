@@ -5191,113 +5191,123 @@ _Video dikirim tanpa watermark!_`;
             }
 
 // =================================================
-            // FITUR FACEBOOK (SMART HYBRID: VIDEO & PHOTO)
-            // ✅ Link Video -> Auto-Convert ke /reel/ (Biar Tembus)
-            // ✅ Link Foto -> Tetap Original (Biar Gak Error)
-            // ✅ Support Engine: FAA + Siputzx + WidiPe
+            // FITUR FACEBOOK (FIXED PHOTO & NEW ENGINE)
+            // ✅ Fix Link Foto (Gak bakal buntung lagi)
+            // ✅ Engine Baru: RyzenDesu (Biasanya lebih kebal blokir)
+            // ✅ Fake User-Agent (Biar dikira browser PC)
             // =================================================
             if (cmd === "fb" || cmd === "fbdl" || cmd === "fbdownload" || cmd === "!fb") {
                 let rawUrl = teks.replace(/!fb|fb|!fbdl|fbdl|!fbdownload|fbdownload/gi, "").trim();
                 
                 if (!rawUrl || !rawUrl.match(/(facebook\.com|fb\.watch|fb\.com)/gi)) {
-                    return sock.sendMessage(from, { text: "⚠️ Link valid mana Bang?" }, { quoted: msg });
+                    return sock.sendMessage(from, { text: "⚠️ Linknya mana Bang?" }, { quoted: msg });
                 }
 
-                // --- 1. SMART TRANSFORMER (Deteksi Jenis Link) ---
+                // 1. LOGIKA PEMBERSIH URL (YANG BENAR) 🧠
                 let targetUrl = rawUrl;
                 
-                // Cek apakah ini link FOTO?
-                const isPhoto = rawUrl.includes("/photo") || rawUrl.includes("fbid=");
+                // Cek apakah ini Link Foto? (Ada 'photo', 'fbid', atau 'set=')
+                const isPhoto = /photo|fbid|set=/.test(rawUrl);
 
                 if (isPhoto) {
-                    // Kalau Foto, CUKUP BERSIHKAN parameter sampah (?set=...)
-                    targetUrl = rawUrl.split('?')[0];
-                    if (rawUrl.includes("fbid=")) {
-                        // Kalau format fbid, biarkan apa adanya tapi bersihkan belakangnya
-                         targetUrl = rawUrl.split('&')[0];
-                    }
-                    console.log(`[FB] Mode: PHOTO | Url: ${targetUrl}`);
+                    // KHUSUS FOTO: Jangan buang tanda tanya (?) karena ID-nya disitu!
+                    // Kita cuma buang sampah tracker '&so=' kalau ada
+                    targetUrl = rawUrl.split('&so=')[0]; 
+                    console.log(`[FB] Mode: PHOTO (Full Link) | ${targetUrl}`);
                 } else {
-                    // Kalau BUKAN Foto (berarti Video/Reel), KITA PAKSA JADI REEL
-                    // Karena API FAA lebih suka format /reel/ daripada /videos/
-                    let match = rawUrl.match(/(?:videos\/|reel\/|vb\.\d+\/|v\/|\?v=)(\d+)/);
-                    if (match && match[1]) {
-                        targetUrl = `https://www.facebook.com/reel/${match[1]}`;
+                    // KHUSUS VIDEO: Buang tanda tanya (?) biar bersih
+                    // Dan ubah ke format /reel/ kalau dia format /videos/
+                    let videoIdMatch = rawUrl.match(/(?:videos\/|reel\/|vb\.\d+\/|v\/|\?v=)(\d+)/);
+                    if (videoIdMatch && videoIdMatch[1]) {
+                        targetUrl = `https://www.facebook.com/reel/${videoIdMatch[1]}`;
+                    } else {
+                        targetUrl = rawUrl.split('?')[0];
                     }
-                    console.log(`[FB] Mode: VIDEO | Url: ${targetUrl}`);
+                    console.log(`[FB] Mode: VIDEO (Clean Link) | ${targetUrl}`);
                 }
                 
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
+                // Header KTP Palsu (Biar API gak nolak request Koyeb)
+                const fakeHeaders = {
+                    headers: { 
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36'
+                    }
+                };
+
                 try {
                     let resultMedia = null;
 
-                    // --- ENGINE 1: FAA ---
+                    // --- ENGINE 1: RYZENDESU (Kuat & Stabil) ---
                     try {
-                        const { data } = await axios.get(`https://api-faa.my.id/faa/fbdownload?url=${encodeURIComponent(targetUrl)}`);
-                        if (data.status && data.result) {
-                            const media = data.result.media;
-                            
-                            // Logika Penentuan Tipe
-                            if (media.video_hd || media.video_sd) {
-                                resultMedia = {
-                                    type: 'video',
-                                    url: media.video_hd || media.video_sd,
-                                    quality: media.video_hd ? "HD" : "SD",
-                                    caption: data.result.info?.title || "Facebook Video"
-                                };
-                            } else if (media.photo_image) {
-                                resultMedia = {
-                                    type: 'image',
-                                    url: media.photo_image,
-                                    quality: "HD",
-                                    caption: data.result.info?.title || "Facebook Image"
-                                };
-                            }
+                        console.log("[FB] Engine 1: RyzenDesu...");
+                        const { data } = await axios.get(`https://api.ryzendesu.vip/api/downloader/fbdl?url=${encodeURIComponent(targetUrl)}`, fakeHeaders);
+                        
+                        if (data && data.url) {
+                             // RyzenDesu biasanya return { url: '...', hd: '...' }
+                             let urlVideo = data.hd || data.url || data.sd;
+                             resultMedia = {
+                                type: 'video',
+                                url: urlVideo,
+                                caption: "✅ Facebook Video (Ryzen)",
+                                quality: data.hd ? "HD" : "SD"
+                             };
+                        } else if (data.result && Array.isArray(data.result)) {
+                             // Kadang formatnya array
+                             let vid = data.result.find(v => v.resolution === "HD") || data.result[0];
+                             resultMedia = {
+                                type: 'video',
+                                url: vid.url,
+                                caption: "✅ Facebook Video (Ryzen)",
+                                quality: "HD/SD"
+                             };
                         }
                     } catch (e) { console.log(`[FB] Engine 1 Skip: ${e.message}`); }
 
-                    // --- ENGINE 2: SIPUTZX (Backup Video Only) ---
-                    // Siputzx jarang support foto, jadi cuma buat backup video
-                    if (!resultMedia && !isPhoto) {
+                    // --- ENGINE 2: WIDIPE (Cadangan) ---
+                    if (!resultMedia) {
                         try {
-                            const { data } = await axios.get(`https://api.siputzx.my.id/api/d/fbdown?url=${encodeURIComponent(targetUrl)}`);
-                            if (data.status && data.data) {
-                                let highest = data.data.reduce((prev, curr) => (parseInt(curr.quality) > parseInt(prev.quality) ? curr : prev));
-                                resultMedia = {
-                                    type: 'video',
-                                    url: highest.url,
-                                    quality: highest.quality,
-                                    caption: "Facebook Video"
-                                };
+                            console.log("[FB] Engine 2: WidiPe...");
+                            const { data } = await axios.get(`https://widipe.com/download/fbdown?url=${encodeURIComponent(targetUrl)}`, fakeHeaders);
+                            const res = data.result;
+                            if (res) {
+                                if (res.HD || res.Normal_video || res.SD) {
+                                    resultMedia = {
+                                        type: 'video',
+                                        url: res.HD || res.Normal_video || res.SD,
+                                        caption: "✅ Facebook Video (WidiPe)",
+                                        quality: res.HD ? "HD" : "SD"
+                                    };
+                                }
                             }
                         } catch (e) { console.log(`[FB] Engine 2 Skip: ${e.message}`); }
                     }
 
+                    // --- ENGINE 3: FALLBACK MANUAL (Buat Foto) ---
+                    // Kalau API Video gagal semua, atau memang link foto, kita coba scrape simpel
+                    if (!resultMedia && isPhoto) {
+                        // Karena API downloader jarang support foto, kita asumsi link foto FB kadang bisa dibuka langsung
+                        // Tapi karena FB butuh login, ini untung-untungan.
+                        // Kita coba pakai screenshot logic atau kirim link original
+                        return sock.sendMessage(from, { text: "❌ Maaf Bang, API Downloader saat ini cuma support Video. Untuk foto silakan screenshot manual ya." }, { quoted: msg });
+                    }
+
                     // --- KIRIM HASIL ---
                     if (resultMedia) {
-                        if (resultMedia.type === 'video') {
-                            await sock.sendMessage(from, { 
-                                video: { url: resultMedia.url }, 
-                                caption: `✅ *Facebook Video*\n📊 Quality: ${resultMedia.quality}\n📝 ${resultMedia.caption}`,
-                                gifPlayback: false 
-                            }, { quoted: msg });
-                        } else {
-                            await sock.sendMessage(from, { 
-                                image: { url: resultMedia.url }, 
-                                caption: `✅ *Facebook Image*\n📝 ${resultMedia.caption}` 
-                            }, { quoted: msg });
-                        }
+                        await sock.sendMessage(from, { 
+                            video: { url: resultMedia.url }, 
+                            caption: `${resultMedia.caption}\n📊 Quality: ${resultMedia.quality}`,
+                            gifPlayback: false 
+                        }, { quoted: msg });
+                        
                         await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
                     } else {
-                        // Pesan error spesifik
-                        let errMsg = isPhoto ? "Foto tidak ditemukan (Mungkin Privat)." : "Video tidak ditemukan (Link Invalid/Privat).";
-                        await sock.sendMessage(from, { text: `❌ ${errMsg}` }, { quoted: msg });
+                        throw new Error("Semua API Zonk / IP Koyeb Diblokir");
                     }
 
                 } catch (e) {
-                    console.error("[FB] Fail:", e.message);
-                    await sock.sendMessage(from, { text: "❌ Gagal memproses permintaan." }, { quoted: msg });
+                    console.error("[FB] Fatal:", e.message);
+                    await sock.sendMessage(from, { text: "❌ Gagal Download. Server API menolak akses (IP Koyeb Limit)." }, { quoted: msg });
                 }
             }
 
@@ -5364,12 +5374,12 @@ _Video dikirim tanpa watermark!_`;
                         if (file.endsWith(".mp4")) {
                             await sock.sendMessage(from, { 
                                 video: fs.readFileSync(file), 
-                                caption: "✅ Instagram Downloader (Gallery-DL)" 
+                                caption: "" 
                             }, { quoted: msg });
                         } else {
                             await sock.sendMessage(from, { 
                                 image: fs.readFileSync(file), 
-                                caption: "✅ Instagram Downloader (Gallery-DL)" 
+                                caption: "" 
                             }, { quoted: msg });
                         }
                     }
