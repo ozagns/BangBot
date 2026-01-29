@@ -7674,80 +7674,44 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
             }
 
 // =================================================
-            // FITUR LIRIK (VIA JINA.AI + GOOGLE SCRAPE)
+            // FITUR LIRIK (VIA POPCAT - ANTI 401)
             // =================================================
-            if (cmd === "!lirik" || cmd === "!lyrics") {
-                if (!args[0]) {
-                    return sock.sendMessage(from, { text: "⚠️ Masukkan judul lagu yang ingin dicari!\nContoh: *!lirik Rahasia Hati - Nidji*" }, { quoted: msg });
+            if (cmd === "lirik" || cmd === "lyrics") {
+                // 1. Ambil Judul Lagu (Hapus command dari teks)
+                // Kita pakai logika replace biar bersih dari prefix
+                let songName = teks.replace(/!lirik|lirik|!lyrics|lyrics/gi, "").trim();
+
+                if (!songName) {
+                    return sock.sendMessage(from, { text: "⚠️ Masukkan judul lagu!\nContoh: *!lirik Rahasia Hati - Nidji*" }, { quoted: msg });
                 }
 
-                const judulLagu = args.join(" ");
-                
-                // Kasih reaksi tunggu
+                console.log(`[LIRIK] Mencari: ${songName}`);
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
-                console.log(`[LIRIK] Mencari: ${judulLagu}`);
 
                 try {
-                    // Cek apakah cheerio ada
-                    const cheerio = require("cheerio");
+                    // 2. Request ke PopCat API (Gratis & Stabil)
+                    const { data } = await axios.get(`https://api.popcat.xyz/lyrics?song=${encodeURIComponent(songName)}`);
 
-                    // 1. Request ke Jina AI (Proxy ke Google)
-                    // Kita ganti fetch jadi axios biar seragam
-                    const { data } = await axios.get(`https://r.jina.ai/https://www.google.com/search?q=lirik+lagu+${encodeURIComponent(judulLagu)}&hl=id`, {
-                        headers: {
-                            "x-return-format": "html",
-                            "x-engine": "cf-browser-rendering",
-                             // User agent biar dikira browser beneran
-                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-                        }
-                    });
-
-                    // 2. Parsing HTML pakai Cheerio (Logika "Colongan" tadi)
-                    const $ = cheerio.load(data);
-                    const lirik = [];
-                    const output = [];
-                    const result = {};
-
-                    // Ambil Metadata (Judul, Artis) dari div.PZPZlf
-                    $("div.PZPZlf").each((i, e) => {
-                        const penemu = $(e).find("div[jsname=\"U8S5sf\"]").text().trim();
-                        if (!penemu) {
-                            output.push($(e).text().trim());
-                        }
-                    });
-
-                    // Ambil Teks Lirik dari div[jsname="U8S5sf"]
-                    $("div[jsname=\"U8S5sf\"]").each((i, el) => {
-                        let out = "";
-                        $(el).find("span[jsname=\"YS01Ge\"]").each((j, span) => {
-                            out += $(span).text() + "\n";
-                        });
-                        lirik.push(out.trim());
-                    });
-
-                    // Susun Data
-                    result.lyrics = lirik.join("\n\n");
-                    result.title = output[0] || judulLagu; // Ambil elemen pertama sebagai judul
-                    result.subtitle = output[1] || ""; // Elemen kedua subtitle (kalau ada)
-
-                    // Cek Validasi
-                    if (!result.lyrics) {
-                        return sock.sendMessage(from, { text: "⚠️ Lirik tidak ditemukan di Google Quick Result." }, { quoted: msg });
+                    // 3. Cek apakah lirik ditemukan
+                    if (!data || data.error || !data.lyrics) {
+                        return sock.sendMessage(from, { text: `❌ Lirik lagu *"${songName}"* tidak ditemukan.` }, { quoted: msg });
                     }
 
-                    // 3. Kirim Hasil
-                    let caption = `🎵 *${result.title}*\n`;
-                    if (result.subtitle) caption += `_${result.subtitle}_\n`;
-                    caption += `\n${result.lyrics}`;
+                    // 4. Susun Pesan
+                    let caption = `🎤 *${data.title}*\n`;
+                    caption += `👤 *Artist:* ${data.artist}\n`;
+                    caption += `──────────────────\n\n`;
+                    caption += `${data.lyrics}`;
 
+                    // 5. Kirim dengan Thumbnail Album (External Ad Reply)
                     await sock.sendMessage(from, { 
                         text: caption,
                         contextInfo: {
                             externalAdReply: {
-                                title: "Lyrics Search",
-                                body: result.title,
-                                thumbnailUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Approve_icon.svg/1200px-Approve_icon.svg.png",
-                                sourceUrl: "https://google.com",
+                                title: "Lyrics Finder",
+                                body: `${data.artist} - ${data.title}`,
+                                thumbnailUrl: data.image, // PopCat ngasih gambar album juga!
+                                sourceUrl: "https://spotify.com",
                                 mediaType: 1,
                                 renderLargerThumbnail: true
                             }
@@ -7758,13 +7722,7 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
 
                 } catch (err) {
                     console.error("[LIRIK] Error:", err.message);
-                    
-                    // Error Handling Khusus Cheerio
-                    if (err.message.includes("Cannot find module 'cheerio'")) {
-                        await sock.sendMessage(from, { text: "⚠️ *ERROR SISTEM*\nModule 'cheerio' belum terinstall.\n\nTambahkan `\"cheerio\": \"^1.0.0\"` di file package.json!" }, { quoted: msg });
-                    } else {
-                        await sock.sendMessage(from, { text: "❌ Terjadi kesalahan saat mengambil lirik." }, { quoted: msg });
-                    }
+                    await sock.sendMessage(from, { text: "❌ Terjadi kesalahan server. Coba judul lain." }, { quoted: msg });
                 }
             }
 
