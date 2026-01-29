@@ -12596,4 +12596,4 @@ _Tetap semangat Bang!_`;
     });
 }
 
-startBot();  
+startBot();   
