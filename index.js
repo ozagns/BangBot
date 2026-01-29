@@ -5311,105 +5311,61 @@ _Video dikirim tanpa watermark!_`;
                 }
             }
 
-// =================================================
-            // FITUR INSTAGRAM (JSON MODE + METADATA)
-            // ✅ Menggunakan Flag -j untuk Dump JSON
-            // ✅ Support Caption, Username, Likes
-            // ✅ Tidak menuhin memori Koyeb (No File Download)
-            // =================================================
-            if (cmd === "!ig" || cmd === "!instagram") {
-                // Ambil URL dan bersihkan command
-                let url = teks.replace(/!ig|ig|!instagram|instagram/gi, "").trim();
+if (cmd === "!ig" || cmd === "!instagram") {
+                // CARA AMBIL URL YANG AMAN:
+                // Kita cari teks yang mengandung "instagram.com" di dalam pesan
+                let urlInput = teks.match(/https?:\/\/(www\.)?instagram\.com\/[^\s]+/gi);
+                let url = urlInput ? urlInput[0] : null;
 
                 if (!url) {
-                    return sock.sendMessage(from, { text: "⚠️ Link Instagram-nya mana Bang?\nContoh: *!ig https://www.instagram.com/reel/xxxx/*" }, { quoted: msg });
+                    return sock.sendMessage(from, { text: "⚠️ Link Instagram-nya mana Bang? Pastikan linknya lengkap ya." }, { quoted: msg });
                 }
 
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
                     const { exec } = require("child_process");
-
-                    // PERINTAH UTAMA:
-                    // gallery-dl -j (Dump JSON) --cookies (Login) -q (Quiet) "URL"
-                    // Kita tidak perlu output folder karena kita cuma mau baca teks JSON-nya
+                    // Pastikan file cookies ada di folder yang sama dengan script ini
                     const command = `gallery-dl -j -q --cookies "instagram_cookies.txt" "${url}"`;
+
+                    console.log(`[IG] Executing: ${command}`); // Buat ngecek di log linknya udah bener belum
 
                     exec(command, async (error, stdout, stderr) => {
                         if (error) {
                             console.error(`[IG] Error Exec: ${error.message}`);
-                            // Cek error spesifik (misal login gagal)
-                            if (stderr.includes("401") || stderr.includes("Login required")) {
-                                return sock.sendMessage(from, { text: "❌ Gagal Login. Cookies Instagram mungkin sudah kedaluwarsa." }, { quoted: msg });
-                            }
                             return sock.sendMessage(from, { text: "❌ Gagal mengambil data. Pastikan link benar & akun tidak diprivate." }, { quoted: msg });
                         }
 
-                        // PARSING DATA JSON
-                        // gallery-dl akan print 1 baris JSON untuk setiap file media
-                        // Kalau 1 postingan ada 3 slide, outputnya ada 3 baris
                         const rawLines = stdout.trim().split("\n");
-                        
-                        if (rawLines.length === 0) {
-                             return sock.sendMessage(from, { text: "❌ Tidak ada media ditemukan di link ini." }, { quoted: msg });
+                        if (!stdout || rawLines.length === 0) {
+                             return sock.sendMessage(from, { text: "❌ Tidak ada media ditemukan. Cek cookies atau link." }, { quoted: msg });
                         }
 
-                        // Ambil Data Pertama untuk Metadata (Caption dll biasanya sama per slide)
-                        let firstData;
-                        try {
-                            firstData = JSON.parse(rawLines[0]);
-                        } catch (e) {
-                            return sock.sendMessage(from, { text: "❌ Gagal memproses data Instagram." }, { quoted: msg });
-                        }
-
-                        // --- SUSUN METADATA ---
+                        let firstData = JSON.parse(rawLines[0]);
                         const username = firstData.username || firstData.owner?.username || "Unknown";
-                        const fullName = firstData.full_name || firstData.owner?.full_name || "";
-                        const likes = firstData.edge_media_preview_like?.count || firstData.likes || 0;
                         const captionRaw = firstData.description || firstData.caption || "-";
                         
-                        // Buat Caption yang Rapi
                         let captionText = ``;
-                        captionText += `*User:* ${fullName} (@${username})\n`;
-                        captionText += `*Likes:* ${likes.toLocaleString()}\n`;
+                        captionText += `*User:* @${username}\n`;
                         captionText += `*Caption:*\n${captionRaw}\n\n`;
                         captionText += `*Source:* Instagram`;
 
-                        console.log(`[IG] Mengirim ${rawLines.length} slide...`);
-
-                        // --- KIRIM SEMUA MEDIA ---
-                        // Loop setiap baris JSON (support carousel)
                         for (let i = 0; i < rawLines.length; i++) {
                             try {
                                 const item = JSON.parse(rawLines[i]);
-                                const mediaUrl = item.url || item.display_url; // Link download direct
-
-                                // Tentukan Caption (Cuma dikirim di slide pertama biar gak spam teks)
+                                const mediaUrl = item.url || item.display_url;
                                 const finalCaption = (i === 0) ? captionText : "";
 
-                                // Cek Tipe Media (Video/Image)
-                                if (mediaUrl.includes(".mp4")) {
-                                    await sock.sendMessage(from, { 
-                                        video: { url: mediaUrl }, 
-                                        caption: finalCaption 
-                                    }, { quoted: msg });
+                                if (mediaUrl.includes(".mp4") || mediaUrl.includes("video")) {
+                                    await sock.sendMessage(from, { video: { url: mediaUrl }, caption: finalCaption }, { quoted: msg });
                                 } else {
-                                    await sock.sendMessage(from, { 
-                                        image: { url: mediaUrl }, 
-                                        caption: finalCaption 
-                                    }, { quoted: msg });
+                                    await sock.sendMessage(from, { image: { url: mediaUrl }, caption: finalCaption }, { quoted: msg });
                                 }
-
-                            } catch (errLoop) {
-                                console.error(`[IG] Gagal kirim slide ke-${i}: ${errLoop.message}`);
-                            }
+                            } catch (err) { }
                         }
-
                         await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
                     });
-
                 } catch (e) {
-                    console.error("[IG] System Error:", e);
                     await sock.sendMessage(from, { text: "❌ Terjadi kesalahan sistem." }, { quoted: msg });
                 }
             }
