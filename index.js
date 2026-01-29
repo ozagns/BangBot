@@ -5573,48 +5573,41 @@ _Video dikirim tanpa watermark!_`;
             }
 
 // =================================================
-            // FITUR GET STICKER (GIPHY FIX KEY)
+            // FITUR GETS (GET STICKER) - FIX ERROR 401
             // =================================================
-            if (cmd === "!gets" || cmd === "!caristiker") {
-                let query = teks.replace(cmd, "").trim();
-
-                if (!query) {
-                    const topikIndo = ["pentol lucu", "tuman", "patrick sindiran", "kucing nangis", "meme indonesia"];
-                    query = topikIndo[Math.floor(Math.random() * topikIndo.length)];
-                }
-
-                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+            if (cmd === "gets") {
+                if (!args[0]) return reply(`⚠️ Mau cari stiker apa Bang?\nContoh: *${cmd} tuman*`);
                 
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+
                 try {
-                    // GANTI KEY DI SINI:
-                    // Key Lama: TvF9Udz2Y1uZ91Ju (Mati)
-                    // Key Baru: 0UTRbFtkPbpl2nRfJ50lnJkatU4NsRO2 (Public Beta Key)
-                    const apiKey = "0UTRbFtkPbpl2nRfJ50lnJkatU4NsRO2"; 
+                    const query = args.join(" ");
                     
-                    const { data } = await axios.get(`https://api.giphy.com/v1/stickers/search?api_key=${apiKey}&q=${encodeURIComponent(query)}&limit=10&rating=g`);
+                    // GANTI API GIPHY YANG MATI DENGAN TENOR (LEBIH STABIL)
+                    // Key 'L1V...' ini adalah public key resmi Tenor
+                    const tenorUrl = `https://g.tenor.com/v1/search?q=${query}&key=L1V2DDE884E0&limit=20`;
+                    
+                    const { data } = await axios.get(tenorUrl);
+                    const results = data.results;
 
-                    if (data.data && data.data.length > 0) {
-                        const randomIndex = Math.floor(Math.random() * data.data.length);
-                        const stickerUrl = data.data[randomIndex].images.original.url;
-
-                        await sock.sendMessage(from, { 
-                            sticker: { url: stickerUrl } 
-                        }, { quoted: msg });
-
-                        await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
-
-                    } else {
-                        await sock.sendMessage(from, { text: "❌ Stiker tidak ditemukan." }, { quoted: msg });
+                    if (!results || results.length === 0) {
+                        return reply(`❌ Yah, stiker *${query}* gak ketemu.`);
                     }
+
+                    // Ambil 1 stiker secara acak biar gak bosenin
+                    const randomSticker = results[Math.floor(Math.random() * results.length)];
+                    const stickerUrl = randomSticker.media[0].gif.url;
+
+                    // Kirim langsung sebagai stiker
+                    await sock.sendMessage(from, { 
+                        sticker: { url: stickerUrl } 
+                    }, { quoted: msg });
+
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
                     console.error("Gets Error:", e);
-                    // Kalau kunci ini mati juga, kita kasih pesan biar user tau
-                    if (e.response && e.response.status === 401) {
-                         await sock.sendMessage(from, { text: "❌ API Key Giphy Expired Bang. Harus bikin key sendiri di developers.giphy.com (Gratis)." }, { quoted: msg });
-                    } else {
-                         await sock.sendMessage(from, { text: "❌ Gagal mengambil stiker." }, { quoted: msg });
-                    }
+                    await sock.sendMessage(from, { text: "❌ Gagal mengambil stiker. Server lagi sibuk." }, { quoted: msg });
                 }
             }
 
@@ -6018,40 +6011,48 @@ _Note: Ini cuma ramalan/arti kata, jangan baper ya Bang!_`;
             }
 
 // =================================================
-            // FITUR TO ANIME (POLLINATIONS STABLE)
+            // FITUR TO ANIME (UBAH FOTO JADI ANIME) - VERSI STABIL
             // =================================================
             if (cmd === "!toanime" || cmd === "!jadianime") {
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
                 const isImage = msg.message.imageMessage;
 
                 if (!isQuotedImage && !isImage) {
-                    return sock.sendMessage(from, { text: "⚠️ Kirim/Reply foto muka orang dengan caption *!toanime*" }, { quoted: msg });
+                    return sock.sendMessage(from, { text: "⚠️ Kirim/Reply foto wajah dengan caption *!toanime*" }, { quoted: msg });
                 }
 
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+                // Kirim pesan tunggu biar user tau bot lagi kerja
 
                 try {
-                    // 1. Download & Upload
+                    // 1. Download Gambar dari chat
                     let mediaBuffer;
                     if (isQuotedImage) {
+                        // Kalau reply gambar
                         mediaBuffer = await downloadMediaMessage(
                             { message: msg.message.extendedTextMessage.contextInfo.quotedMessage }, 'buffer', {}
                         );
                     } else {
+                        // Kalau kirim gambar langsung
                         mediaBuffer = await downloadMediaMessage(msg, 'buffer', {});
                     }
 
+                    // 2. Upload ke Catbox (Wajib sukses dulu biar dapet URL)
                     const imageUrl = await uploadToCatbox(mediaBuffer);
 
-                    // 2. Buat URL Pollinations (Prompt: Anime Style)
-                    // Teknik ini 99% anti-error karena Pollinations server raksasa
-                    const prompt = "japanese anime style, anime drawing, high quality, vibrant colors";
-                    const seed = Math.floor(Math.random() * 1000);
-                    const finalUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux-anime&image=${encodeURIComponent(imageUrl)}`;
+                    // 3. Request ke API Anime (Pakai YanzBotz - biasanya lebih stabil)
+                    // Kalau ini gagal, nanti bisa coba ganti URL-nya.
+                    const apiUrl = `https://api.yanzbotz.my.id/api/toanime?url=${imageUrl}`;
                     
-                    // 3. Kirim Hasil
+                    // Test dulu apakah API merespon dengan gambar
+                    // const check = await axios.get(apiUrl);
+                    // if (check.headers['content-type'] !== 'image/jpeg' && check.headers['content-type'] !== 'image/png') {
+                    //     throw new Error("API tidak mengembalikan gambar.");
+                    // }
+
+                    // 4. Kirim Hasilnya langsung dari URL API
                     await sock.sendMessage(from, { 
-                        image: { url: finalUrl }, 
+                        image: { url: apiUrl }, 
                         caption: "" 
                     }, { quoted: msg });
 
@@ -6059,7 +6060,12 @@ _Note: Ini cuma ramalan/arti kata, jangan baper ya Bang!_`;
 
                 } catch (e) {
                     console.error("ToAnime Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Gagal ubah jadi anime." }, { quoted: msg });
+                    // Pesan error yang lebih jelas
+                    let errorMsg = "❌ Gagal mengubah gambar.";
+                    if (e.message.includes("Catbox")) errorMsg = "❌ Gagal upload gambar ke server sementara.";
+                    if (e.response?.status >= 500) errorMsg = "❌ Server Anime lagi sibuk/down. Coba lagi nanti.";
+
+                    await sock.sendMessage(from, { text: errorMsg }, { quoted: msg });
                 }
             }
 
