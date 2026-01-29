@@ -197,9 +197,10 @@ const activeConfess = {};
 const msgLog = {}; // Tempat nyimpen riwayat chat
 const NOMOR_OWNER = "628975800981@s.whatsapp.net"; // Ganti No WA Abang (pake @s.whatsapp.net)
 
-// --- CONFIG GROQ AI (PENYELAMAT) ---
 const Groq = require("groq-sdk");
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = new Groq({
+    apiKey: process.env.GROQ_API_KEY // <--- Ganti jadi begini
+});
 
 const moment = require('moment-timezone');
 const yts = require('yt-search');
@@ -10431,77 +10432,85 @@ Asli  : ${finalUrl}`
                 return;
             }
 
-// =================================================
-            // FITUR STALK IG (SCRAPER MOLLYGRAM)
-            // =================================================
-            if (cmd === "!stalkig") {
+if (cmd === "stalkig") {
                 const username = teks.replace(/!stalkig|stalkig/gi, "").trim();
-                
-                if (!username) return sock.sendMessage(from, { text: "⚠️ Masukkan username Instagram!\nContoh: *!stalkig rafinagita1717*" }, { quoted: msg });
+                if (!username) return sock.sendMessage(from, { text: "⚠️ Masukkan username!" }, { quoted: msg });
 
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
-
-                // --- FUNCTION SCRAPER ---
-                const getIGProfile = async (target) => {
-                    const axios = require("axios");
-                    try {
-                        const url = `https://media.mollygram.com/?url=${encodeURIComponent(target)}`;
-                        const headers = {
-                            'accept': '*/*',
-                            'referer': 'https://mollygram.com/',
-                            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36'
-                        };
-
-                        const { data } = await axios.get(url, { headers });
-                        if (data.status !== 'ok') return null;
-
-                        const html = data.html;
-                        const getMatch = (regex) => {
-                            const match = html.match(regex);
-                            return match ? match[1].trim() : null;
-                        };
-
-                        return {
-                            username: getMatch(/<h4 class="mb-0">([^<]+)<\/h4>/),
-                            fullname: getMatch(/<p class="text-muted">([^<]+)<\/p>/),
-                            bio: getMatch(/<p class="text-dark"[^>]*>([^<]+)<\/p>/),
-                            profilePic: getMatch(/<img[^>]*rounded-circle[^>]*src="([^"]+)"/i) || getMatch(/<img[^>]*src="([^"]+)"[^>]*rounded-circle/i),
-                            posts: getMatch(/<span class="d-block h5 mb-0">([^<]+)<\/span>\s*<div[^>]*>posts<\/div>/i),
-                            followers: getMatch(/<span class="d-block h5 mb-0">([^<]+)<\/span>\s*<div[^>]*>followers<\/div>/i),
-                            following: getMatch(/<span class="d-block h5 mb-0">([^<]+)<\/span>\s*<div[^>]*>following<\/div>/i)
-                        };
-                    } catch (e) { return null; }
-                };
+                console.log(`[IG] Memulai stalking user: ${username}`);
 
                 try {
-                    let res = await getIGProfile(username);
+                    const axios = require("axios");
+                    const url = `https://media.mollygram.com/?url=${encodeURIComponent(username)}`;
+                    
+                    // Header wajib biar gak diblokir
+                    const headers = {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36',
+                        'Referer': 'https://mollygram.com/'
+                    };
 
-                    if (!res || !res.username) {
-                        return sock.sendMessage(from, { text: "❌ Profil tidak ditemukan atau akun di-private." }, { quoted: msg });
+                    const { data } = await axios.get(url, { headers });
+                    console.log(`[IG] Status API: ${data.status}`);
+
+                    if (data.status !== 'ok' || !data.html) {
+                        return sock.sendMessage(from, { text: "❌ Akun tidak ditemukan/Private." }, { quoted: msg });
                     }
 
-                    let caption = `*Username:* ${res.username}\n` +
-                                  `*Fullname:* ${res.fullname || '-'}\n` +
-                                  `*Posts:* ${res.posts || '0'}\n` +
-                                  `*Followers:* ${res.followers || '0'}\n` +
-                                  `*Following:* ${res.following || '0'}\n` +
-                                  `*Bio:* ${res.bio || '-'}\n\n` +
-                                  `https://instagram.com/${res.username}`;
+                    const html = data.html;
 
-                    if (res.profilePic) {
-                        await sock.sendMessage(from, { 
-                            image: { url: res.profilePic }, 
-                            caption: caption 
-                        }, { quoted: msg });
+                    // --- REGEX YANG LEBIH KUAT ---
+                    // Helper buat ngambil data biar gak error kalau null
+                    const getMatch = (regex) => {
+                        const match = html.match(regex);
+                        return match ? match[1].trim() : null;
+                    };
+
+                    // 1. Username (Ambil teks sebelum ada tag <i atau </h4)
+                    const uname = getMatch(/<h4 class="mb-0">\s*(.*?)\s*(?:<i|<\/h4)/i) || username;
+                    
+                    // 2. Data lain
+                    const fullname = getMatch(/<p class="text-muted">\s*([^<]+)\s*<\/p>/i);
+                    const bio = getMatch(/<p class="text-dark"[^>]*>\s*(.*?)\s*<\/p>/s); // Pake flag 's' buat bio panjang
+                    const posts = getMatch(/<span class="d-block h5 mb-0">([^<]+)<\/span>\s*<div[^>]*>posts<\/div>/i);
+                    const followers = getMatch(/<span class="d-block h5 mb-0">([^<]+)<\/span>\s*<div[^>]*>followers<\/div>/i);
+                    const following = getMatch(/<span class="d-block h5 mb-0">([^<]+)<\/span>\s*<div[^>]*>following<\/div>/i);
+                    
+                    // 3. Gambar (Cari src di dalam tag img yang punya class rounded-circle)
+                    let profilePic = getMatch(/<img[^>]*src="([^"]+)"[^>]*class="rounded-circle"/i);
+                    // Bersihin URL gambar dari backslash aneh
+                    if (profilePic) profilePic = profilePic.replace(/\\/g, "").replace(/&amp;/g, "&");
+
+                    console.log(`[IG] Data Dapat: ${uname} | Followers: ${followers}`);
+
+                    let caption = `👤 *Username:* ${uname}\n` +
+                                  `📛 *Fullname:* ${fullname || '-'}\n` +
+                                  `📷 *Posts:* ${posts || '0'}\n` +
+                                  `👥 *Followers:* ${followers || '0'}\n` +
+                                  `➡️ *Following:* ${following || '0'}\n` +
+                                  `📝 *Bio:* ${bio || '-'}\n\n` +
+                                  `🔗 https://instagram.com/${uname}`;
+
+                    // --- PENGIRIMAN (SAFE MODE) ---
+                    // Coba kirim gambar dulu, kalau gagal kirim teks aja
+                    if (profilePic) {
+                        try {
+                            await sock.sendMessage(from, { 
+                                image: { url: profilePic }, 
+                                caption: caption 
+                            }, { quoted: msg });
+                        } catch (imgErr) {
+                            console.error("[IG] Gagal kirim gambar, kirim teks aja.");
+                            await sock.sendMessage(from, { text: caption }, { quoted: msg });
+                        }
                     } else {
                         await sock.sendMessage(from, { text: caption }, { quoted: msg });
                     }
 
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
-                } catch (err) {
-                    console.error(err);
-                    await sock.sendMessage(from, { text: "❌ Terjadi kesalahan saat stalking." }, { quoted: msg });
+                } catch (e) {
+                    console.error("[IG] Error Fatal:", e); // Cek terminal kalau merah
+                    sock.sendMessage(from, { text: "❌ Terjadi kesalahan script." }, { quoted: msg });
                 }
             }
 
