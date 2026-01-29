@@ -231,8 +231,6 @@ process.on('uncaughtException', (err) => {
     console.error('UNCAUGHT EXCEPTION:', err);
 });
 
-const fs = require('fs');
-
 // Fungsi ambil daftar blacklist
 const getBlacklist = () => {
     return JSON.parse(fs.readFileSync('./blacklist.json'));
