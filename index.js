@@ -229,7 +229,7 @@ process.on('unhandledRejection', (reason, p) => {
 
 process.on('uncaughtException', (err) => {
     console.error('UNCAUGHT EXCEPTION:', err);
-});
+});n
 
 // Fungsi ambil daftar blacklist
 const getBlacklist = () => {
@@ -7099,129 +7099,67 @@ ${bar}
                 return;
             }
 
+// =================================================
+            // FITUR IQC (IPHONE STYLE VIA SIPUTZX API)
             // =================================================
-            // IQC — FAKE IPHONE CONTEXT MENU (FIXED JIMP V1)
-            // =================================================
-            if (cmd === "!iqc") {
-                const textInput = teks.replace(/!iqc/i, "").trim();
+            if (cmd === "iqc" || cmd === "iphonechat" || cmd === "ipchat") {
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
-                if (!textInput) {
-                    await sock.sendMessage(from, { text: "Format: *!iqc <teks>*\nContoh: !iqc P" }, { quoted: msg });
-                    return;
+                // 1. Ambil Input (Bisa dari teks langsung atau reply pesan)
+                let input = teks.replace(cmd, "").trim();
+
+                // Kalau kosong tapi user nge-reply chat orang, ambil teks reply-nya
+                if (!input && msg.message.extendedTextMessage?.contextInfo?.quotedMessage) {
+                    const quoted = msg.message.extendedTextMessage.contextInfo.quotedMessage;
+                    input = quoted.conversation || quoted.extendedTextMessage?.text || "";
                 }
 
-                // URL Aset Gambar (Reaction Bar iOS)
-                const REACTION_BAR_URL = "https://i.ibb.co/3WqQPqL/ios-reaction-bar-dark.png"; 
+                if (!input) {
+                    return sock.sendMessage(from, { 
+                        text: "⚠️ Masukkan teks!\n\nContoh Biasa:\n*!iqc Halo Sayang*\n\nContoh Custom (Provider | Batre):\n*!iqc Halo Sayang | Indosat | 15*" 
+                    }, { quoted: msg });
+                }
+
+                // 2. Parsing Data (Teks | Provider | Batre)
+                // Kita pisahkan pakai tanda "|" kalau user mau custom
+                let [messageText, carrier, battery] = input.split("|");
+
+                // Set Default Value (Kalau user gak isi, pakai default dari script asli)
+                if (!messageText) messageText = input; // Kalau split gagal, anggap semua input adalah pesan
+                if (!carrier) carrier = "TELKOMSEL";   // Default
+                if (!battery) battery = "88";          // Default
+
+                // Bersihkan spasi berlebih
+                messageText = messageText.trim();
+                carrier = carrier.trim();
+                battery = battery.trim().replace("%", ""); // API minta angka aja, buang tanda %
+
+                // 3. Ambil Waktu Real-time (WIB)
+                let date = new Date();
+                let time = date.toLocaleTimeString('id-ID', { 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    hour12: false, 
+                    timeZone: 'Asia/Jakarta' 
+                });
+
+                // 4. Panggil API Siputzx
+                // Parameter: time, messageText, carrierName, batteryPercentage, signalStrength, emojiStyle
+                let url = `https://brat.siputzx.my.id/iphone-quoted?time=${encodeURIComponent(time)}&messageText=${encodeURIComponent(messageText)}&carrierName=${encodeURIComponent(carrier)}&batteryPercentage=${encodeURIComponent(battery)}&signalStrength=4&emojiStyle=apple`;
 
                 try {
-
-                    const width = 800; 
-                    const height = 1200; 
-
-                    // FIX 1: Gunakan object { width, height, color } untuk Jimp Baru
-                    const bg = new Jimp({ width: width, height: height, color: 0x000000dd }); 
-                    
-                    // Load Font
-                    const fontText = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE);
-                    const fontTime = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE);
-                    const fontMenu = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE);
-
-                    // Load Reaction Bar
-                    let reactionImg;
-                    try {
-                        reactionImg = await Jimp.read(REACTION_BAR_URL);
-                        
-                        // FIX 2: Resize kompatibel (Cek dulu dia minta object atau angka)
-                        if (reactionImg.resize.length < 2) {
-                             // Jimp Baru (minta object)
-                             reactionImg.resize({ w: 550 }); 
-                        } else {
-                             // Jimp Lama
-                             reactionImg.resize(550, Jimp.AUTO); 
-                        }
-                    } catch (e) {
-                        // Fallback Box (Pakai format baru)
-                        reactionImg = new Jimp({ width: 550, height: 100, color: 0x303030ff });
-                    }
-
-                    const centerX = width / 2;
-                    let currentY = 150; 
-
-                    // --- DRAW REACTION BAR ---
-                    const reactionX = centerX - (reactionImg.bitmap.width / 2);
-                    bg.composite(reactionImg, reactionX, currentY);
-                    currentY += reactionImg.bitmap.height + 20;
-
-                    // --- DRAW MESSAGE ---
-                    const textWidth = Jimp.measureText(fontText, textInput);
-                    const textX = 130; 
-                    
-                    bg.print(fontText, textX, currentY, textInput);
-                    
-                    const time = "08.13"; 
-                    const timeX = textX + textWidth + 15;
-                    bg.print(fontTime, timeX, currentY + 12, time); 
-
-                    currentY += 60; 
-
-                    // --- DRAW MENU ---
-                    const menuItems = ["Balas", "Teruskan", "Salin", "Beri bintang", "Hapus", "Lainnya..."];
-                    const menuWidth = 500;
-                    const itemHeight = 80;
-                    const menuHeight = menuItems.length * itemHeight;
-                    const menuX = centerX - (menuWidth / 2);
-                    
-                    // Menu Base (Format Baru)
-                    const menuBg = new Jimp({ width: menuWidth, height: menuHeight, color: 0x252525ff });
-                    
-                    let itemY = 0;
-                    // Garis Pemisah (Format Baru)
-                    const separator = new Jimp({ width: menuWidth, height: 1, color: 0x3a3a3aff });
-
-                    for (let i = 0; i < menuItems.length; i++) {
-                        menuBg.print(
-                            fontMenu, 
-                            20, 
-                            itemY + 25, 
-                            { text: menuItems[i], alignmentX: Jimp.HORIZONTAL_ALIGN_LEFT },
-                            menuWidth
-                        );
-
-                        if (i < menuItems.length - 1) {
-                            menuBg.composite(separator, 0, itemY + itemHeight - 1);
-                        }
-                        itemY += itemHeight;
-                    }
-
-                    bg.composite(menuBg, menuX, currentY);
-
-                    // Crop Akhir
-                    const finalHeight = currentY + menuHeight + 100;
-                    
-                    // FIX 3: Crop kompatibel
-                    if (bg.crop.length < 4) {
-                         // Jimp Baru
-                         bg.crop({ x: 0, y: 0, w: width, h: finalHeight });
-                    } else {
-                         // Jimp Lama
-                         bg.crop(0, 0, width, finalHeight);
-                    }
-
-                    const outPath = `./iqc_${Date.now()}.png`;
-                    await bg.writeAsync(outPath);
-
-                    await sock.sendMessage(from, { 
-                        image: fs.readFileSync(outPath),
-                        caption: `IQC: ${textInput}`
+                    // 5. Kirim Gambar
+                    await sock.sendMessage(from, {
+                        image: { url: url },
+                        caption: `📱 *iMessage Style*\nProvider: ${carrier} | Batre: ${battery}%`
                     }, { quoted: msg });
 
-                    fs.unlinkSync(outPath);
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (err) {
-                    console.error("IQC Error:", err);
-                    await sock.sendMessage(from, { text: "Gagal membuat fake chat." }, { quoted: msg });
+                    console.error('Error iMessage:', err);
+                    await sock.sendMessage(from, { text: "⚠️ Gagal membuat gambar. Server API mungkin sedang down." }, { quoted: msg });
                 }
-                return;
             }
 
             // --- FITUR NOMOR HALAMAN PDF (PDF-LIB) ---
