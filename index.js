@@ -7674,101 +7674,70 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
             }
 
 // =================================================
-            // FITUR LIRIK (AZLYRICS SCRAPER - OLD SCHOOL & KUAT)
+            // FITUR LIRIK (ITUNES + LYRICS.OVH)
+            // ✅ API Resmi Apple (Search) + API Open Source (Lyrics)
             // =================================================
             if (cmd === "!lirik" || cmd === "!lyrics") {
-                let songName = teks.replace(/!lirik|lirik|!lyrics|lyrics/gi, "").trim();
+                let input = teks.replace(/!lirik|lirik|!lyrics|lyrics/gi, "").trim();
 
-                if (!songName) {
+                if (!input) {
                     return sock.sendMessage(from, { text: "⚠️ Masukkan judul lagu!\nContoh: *!lirik Komang*" }, { quoted: msg });
                 }
 
-                console.log(`[LIRIK] Mencari di AZLyrics: ${songName}`);
+                console.log(`[LIRIK] Mencari Metadata di iTunes: ${input}`);
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
-                    const cheerio = require("cheerio");
-
-                    // 1. CARI LAGU DI AZLYRICS
-                    // Kita pakai header browser Chrome biar sopan
-                    const searchUrl = `https://search.azlyrics.com/search.php?q=${encodeURIComponent(songName)}&x=0&y=0`;
+                    // 1. CARI JUDUL & ARTIS YANG BENAR VIA ITUNES API (Anti Blokir)
+                    const itunesRes = await axios.get(`https://itunes.apple.com/search?term=${encodeURIComponent(input)}&entity=song&limit=1`);
                     
-                    const { data: searchData } = await axios.get(searchUrl, {
-                        headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-                        }
-                    });
-
-                    const $ = cheerio.load(searchData);
-
-                    // Ambil link lagu pertama dari hasil pencarian
-                    // AZLyrics naruh hasil di tabel
-                    let link = "";
-                    let titleFound = "";
-                    
-                    // Kita cari link yang ada di dalam tabel hasil
-                    $("td.text-left a").each((i, el) => {
-                        if (!link && $(el).attr("href") && !$(el).attr("href").includes("search.php")) {
-                            link = $(el).attr("href");
-                            titleFound = $(el).text().trim();
-                        }
-                    });
-
-                    if (!link) {
-                        return sock.sendMessage(from, { text: `❌ Lagu *"${songName}"* tidak ditemukan di AZLyrics.` }, { quoted: msg });
+                    if (!itunesRes.data || itunesRes.data.resultCount === 0) {
+                         return sock.sendMessage(from, { text: `❌ Lagu *"${input}"* tidak ditemukan di iTunes.` }, { quoted: msg });
                     }
 
-                    console.log(`[LIRIK] Scraping URL: ${link}`);
+                    const songData = itunesRes.data.results[0];
+                    const artist = songData.artistName;
+                    const title = songData.trackName;
+                    const cover = songData.artworkUrl100.replace('100x100', '600x600'); // Ambil cover HD
 
-                    // 2. AMBIL ISI LIRIK
-                    const { data: lyricData } = await axios.get(link, {
-                        headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-                        }
+                    console.log(`[LIRIK] Target: ${artist} - ${title}`);
+                    console.log(`[LIRIK] Mengambil teks dari Lyrics.ovh...`);
+
+                    // 2. AMBIL LIRIK DARI LYRICS.OVH
+                    // Format URL: https://api.lyrics.ovh/v1/NamaArtis/JudulLagu
+                    const lyricsRes = await axios.get(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`, {
+                        timeout: 10000 // 10 Detik
                     });
 
-                    const $$ = cheerio.load(lyricData);
-
-                    // Judul Lagu & Artis
-                    const songTitle = $$("div.ringtone").next().text().replace(/"/g, "").replace(" lyrics", "").trim() || titleFound;
-                    const artist = $$("div.lyricsh").text().replace(" Lyrics", "").trim() || "Unknown Artist";
-
-                    // Ambil Lirik
-                    // Lirik di AZLyrics ada di div setelah div.ringtone, tapi agak tricky
-                    // Biasanya dia adalah div yang tidak punya class di tengah halaman
-                    let lyrics = "";
-                    
-                    $$("div").each((i, el) => {
-                        // Ciri khas AZLyrics: Lirik ada di antara komentar HTML ini
-                        const content = $$(el).html();
-                        if (content && content.includes("")) {
-                             lyrics = $$(el).text().trim();
-                        }
-                    });
+                    const lyrics = lyricsRes.data.lyrics;
 
                     if (!lyrics) {
-                        // Fallback cara kasar kalau cara halus gagal
-                        lyrics = $$(".ringtone").nextAll("div").first().text().trim();
-                    }
-
-                    if (!lyrics) {
-                         return sock.sendMessage(from, { text: "❌ Lirik tidak bisa dibaca (Struktur web aneh)." }, { quoted: msg });
+                        return sock.sendMessage(from, { text: `❌ Musik ketemu (${title}), tapi teks lirik belum tersedia di database.` }, { quoted: msg });
                     }
 
                     // 3. KIRIM HASIL
-                    let caption = `*${songTitle}*\n`;
+                    let caption = `*${title}*\n`;
                     caption += `*Artist:* ${artist}\n`;
-                    caption += `*Source:* AZLyrics\n`;
+                    caption += `*Album:* ${songData.collectionName || '-'}\n`;
                     caption += `──────────────────\n\n`;
                     caption += `${lyrics}`;
 
-                    // Kirim Teks Saja (AZLyrics jarang punya gambar HD yang gampang diambil)
-                    await sock.sendMessage(from, { text: caption }, { quoted: msg });
+                    await sock.sendMessage(from, { 
+                        image: { url: cover },
+                        caption: caption
+                    }, { quoted: msg });
+
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
                     console.error("[LIRIK] Error:", e.message);
-                    await sock.sendMessage(from, { text: "❌ Gagal mengambil lirik." }, { quoted: msg });
+                    
+                    // Error handling khusus Lyrics.ovh
+                    if (e.response && e.response.status === 404) {
+                        await sock.sendMessage(from, { text: "❌ Lagu ditemukan di iTunes, tapi liriknya belum ada di database Lyrics.ovh." }, { quoted: msg });
+                    } else {
+                        await sock.sendMessage(from, { text: "❌ Terjadi kesalahan koneksi (Server Lirik Down)." }, { quoted: msg });
+                    }
                 }
             }
 
