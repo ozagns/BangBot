@@ -7100,17 +7100,17 @@ ${bar}
             }
 
 // =================================================
-            // FITUR IQC (FIXED PREFIX & LOGGING)
+            // FITUR IQC (FIXED VARIABLE)
             // =================================================
-            // Cek command pake tanda seru (!) dan tanpa tanda seru biar aman
             if (cmd === "iqc" || cmd === "!iqc" || cmd === "iphonechat" || cmd === "!iphonechat") {
                 
-                // 1. Log tanda masuk (biar ketahuan di terminal)
+                // DEFINISIKAN PUSHNAME BIAR GAK ERROR
+                const pushname = msg.pushName || "User";
+
                 console.log(`[IQC] Perintah diterima dari: ${pushname}`);
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 // 2. Ambil Input
-                // Kita replace baik "!iqc" maupun "iqc" biar bersih
                 let input = teks.replace("!iqc", "").replace("iqc", "").replace("!iphonechat", "").replace("iphonechat", "").trim();
 
                 // Kalau kosong tapi user nge-reply chat orang, ambil teks reply-nya
