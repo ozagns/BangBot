@@ -5191,67 +5191,114 @@ _Video dikirim tanpa watermark!_`;
             }
 
 // =================================================
-            // FITUR FACEBOOK DOWNLOADER (FAA API - STYLE IF CMD)
-            // ✅ Support HD & SD
-            // ✅ Support Link Reels & Video Biasa
+            // FITUR FACEBOOK DOWNLOADER (ULTIMATE HYBRID)
+            // ✅ Auto-Clean URL (?...)
+            // ✅ Support Video (HD/SD)
+            // ✅ Support Image (Foto Post)
+            // ✅ Dual Engine (FAA + Siputzx)
             // =================================================
             if (cmd === "!fb") {
-                // Ambil link & bersihkan command
-                let q = teks.replace(/!fb/gi, "").trim();
+                // 1. Bersihkan Command
+                let rawUrl = teks.replace(/!fb|fb|!fbdl|fbdl|!fbdownload|fbdownload/gi, "").trim();
                 
-                // Auto-fix URL (kalau user lupa https)
-                if (q && !q.startsWith("http")) q = "https://" + q;
+                // 2. Auto-Fix URL
+                if (rawUrl && !rawUrl.startsWith("http")) rawUrl = "https://" + rawUrl;
 
-                // Validasi Link FB
-                if (!q || !q.match(/(facebook\.com|fb\.watch|fb\.com)/gi)) {
-                    return sock.sendMessage(from, { text: "⚠️ Linknya mana Bang? Pastikan link video Facebook ya.\nContoh: *!fb https://www.facebook.com/reel/xxxxx*" }, { quoted: msg });
+                // 3. Validasi Dasar
+                if (!rawUrl || !rawUrl.match(/(facebook\.com|fb\.watch|fb\.com)/gi)) {
+                    return sock.sendMessage(from, { text: "⚠️ Linknya mana Bang? Pastikan link Facebook valid." }, { quoted: msg });
                 }
 
-                console.log(`[FB] Memproses: ${q}`);
+                // 4. PEMBERSIH URL
+                // Membuang parameter sampah biar API gak bingung
+                let cleanUrl = rawUrl.split('?')[0]; 
+
+                console.log(`[FB] Processing: ${cleanUrl}`);
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
-                    // Tembak API FAA
-                    const { data } = await axios.get(`https://api-faa.my.id/faa/fbdownload?url=${encodeURIComponent(q)}`);
-                    
-                    // Cek Status API
-                    if (!data.status || !data.result) {
-                        return sock.sendMessage(from, { text: "❌ Video tidak ditemukan atau diprivate." }, { quoted: msg });
+                    let resultMedia = null; // Akan diisi object { type: 'video'|'image', url: '...', caption: '...' }
+
+                    // --- ENGINE 1: FAA API (Support Video & Image) ---
+                    try {
+                        console.log("[FB] Mencoba Engine 1 (FAA)...");
+                        const { data } = await axios.get(`https://api-faa.my.id/faa/fbdownload?url=${encodeURIComponent(cleanUrl)}`);
+                        
+                        if (data.status && data.result) {
+                            const res = data.result;
+                            const media = res.media;
+                            const info = res.info;
+                            const author = res.author;
+
+                            // A. Cek Video
+                            let videoUrl = media.video_hd || media.video_sd;
+                            if (videoUrl) {
+                                resultMedia = {
+                                    type: 'video',
+                                    url: videoUrl,
+                                    caption: `**Title:* ${info?.title || "No Title"}\n*Author:* ${author?.username || "Unknown"}\n*Quality:* ${media.video_hd ? "HD" : "SD"}`
+                                };
+                            }
+                            // B. Cek Foto (Kalau Video Gak Ada)
+                            else if (media.photo_image) {
+                                resultMedia = {
+                                    type: 'image',
+                                    url: media.photo_image,
+                                    caption: `*Title:* ${info?.title || "No Title"}\n*Author:* ${author?.username || "Unknown"}`
+                                };
+                            }
+                        }
+                    } catch (e1) {
+                        console.log("[FB] Engine 1 Gagal/Skip.");
                     }
 
-                    const res = data.result;
-                    const media = res.media;
-                    const info = res.info;
-
-                    // Logika Pemilihan Kualitas (HD Prioritas)
-                    // Kita ambil langsung dari key video_hd atau video_sd
-                    let videoUrl = media.video_hd || media.video_sd;
-                    let quality = media.video_hd ? "HD (720p+)" : "SD (Standard)";
-
-                    if (!videoUrl) {
-                         return sock.sendMessage(from, { text: "❌ Gagal mendapatkan link video." }, { quoted: msg });
+                    // --- ENGINE 2: SIPUTZX API (Backup - Video Only) ---
+                    // Jalan kalau Engine 1 gagal atau hasilnya masih null
+                    if (!resultMedia) {
+                        try {
+                            console.log("[FB] Mencoba Engine 2 (Siputzx)...");
+                            const { data: data2 } = await axios.get(`https://api.siputzx.my.id/api/d/fbdown?url=${encodeURIComponent(cleanUrl)}`);
+                            
+                            if (data2.status && data2.data) {
+                                // Siputzx biasanya return array video
+                                const highest = data2.data.reduce((prev, current) => {
+                                    return (parseInt(current.quality) > parseInt(prev.quality)) ? current : prev;
+                                });
+                                
+                                resultMedia = {
+                                    type: 'video',
+                                    url: highest.url,
+                                    caption: `*Title:* Facebook Video\n*Quality:* ${highest.quality || "SD"}`
+                                };
+                            }
+                        } catch (e2) {
+                            console.log("[FB] Engine 2 Gagal.");
+                        }
                     }
 
-                    // Susun Caption
-                    let caption = `*Facebook Downloader*\n\n`;
-                    caption += `*Title:* ${info.title || "No Title"}\n`;
-                    caption += `*Author:* ${res.author.username || "Unknown"}\n`;
-                    caption += `*Duration:* ${info.duration || "-"} detik\n`;
-                    caption += `*Quality:* ${quality}\n`;
-                    caption += `*Source:* Facebook`;
+                    // --- KIRIM HASIL ---
+                    if (!resultMedia) {
+                         return sock.sendMessage(from, { text: "❌ Gagal Download. Konten diprivate atau link salah." }, { quoted: msg });
+                    }
 
-                    // Kirim Video
-                    await sock.sendMessage(from, { 
-                        video: { url: videoUrl }, 
-                        caption: caption,
-                        gifPlayback: false
-                    }, { quoted: msg });
+                    if (resultMedia.type === 'video') {
+                        await sock.sendMessage(from, { 
+                            video: { url: resultMedia.url }, 
+                            caption: resultMedia.caption,
+                            gifPlayback: false
+                        }, { quoted: msg });
+                    } else {
+                        await sock.sendMessage(from, { 
+                            image: { url: resultMedia.url }, 
+                            caption: resultMedia.caption 
+                        }, { quoted: msg });
+                    }
 
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
-                    console.error("[FB] Error:", e.message);
-                    await sock.sendMessage(from, { text: "❌ Server API sedang sibuk/down." }, { quoted: msg });
+                    console.error("[FB] Fatal Error:", e.message);
+                    await sock.sendMessage(from, { text: `❌ Error Sistem: ${e.message}` }, { quoted: msg });
                 }
             }
 
