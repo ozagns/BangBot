@@ -231,6 +231,22 @@ process.on('uncaughtException', (err) => {
     console.error('UNCAUGHT EXCEPTION:', err);
 });
 
+const fs = require('fs');
+
+// Fungsi ambil daftar blacklist
+const getBlacklist = () => {
+    return JSON.parse(fs.readFileSync('./blacklist.json'));
+};
+
+// Fungsi tambah nomor ke blacklist
+const addBlacklist = (target) => {
+    const blacklist = getBlacklist();
+    if (!blacklist.includes(target)) {
+        blacklist.push(target);
+        fs.writeFileSync('./blacklist.json', JSON.stringify(blacklist, null, 2));
+    }
+};
+
 // Base URL backup TikTok (pihak ketiga apa pun)
 // Contoh .env: TIKTOK_BACKUP_API=https://your-backup-api.com/tiktok?url=
 const TIKTOK_BACKUP_API = process.env.TIKTOK_BACKUP_API || "";
@@ -4518,31 +4534,23 @@ Silakan hubungi owner untuk kerja sama, kritik/saran, atau report bug.`
                 });
             }
 
-            // 2. KICK MEMBER
             if (cmd === "!kick") {
-                if (!isGroup) return sock.sendMessage(from, { text: "Khusus Grup Bang." }, { quoted: msg });
-                if (!isAdmin) return sock.sendMessage(from, { text: "❌ Lu bukan Admin." }, { quoted: msg });
-                if (!isBotAdmin) return sock.sendMessage(from, { text: "❌ Bot harus jadi Admin dulu biar bisa nendang orang." }, { quoted: msg });
+                if (!isGroup) return;
+                if (!isBotAdmin) return reply("Bot harus jadi admin!");
+                
+                let users = msg.message.extendedTextMessage?.contextInfo?.mentionedJid[0] || 
+                            msg.message.extendedTextMessage?.contextInfo?.participant;
+                
+                if (!users) return reply("Tag orangnya dulu, Bang!");
 
-                // Ambil target dari REPLY atau TAG
-                let target = "";
-                if (msg.message.extendedTextMessage?.contextInfo?.participant) {
-                    // Cara 1: Reply chat target
-                    target = msg.message.extendedTextMessage.contextInfo.participant;
-                } else if (msg.message.extendedTextMessage?.contextInfo?.mentionedJid) {
-                    // Cara 2: Tag target (@628xxx)
-                    target = msg.message.extendedTextMessage.contextInfo.mentionedJid[0];
-                } else {
-                    return sock.sendMessage(from, { text: "⚠️ Reply chat orangnya atau Tag (@nama) yang mau di-kick." }, { quoted: msg });
-                }
-
-                // Eksekusi Kick
-                try {
-                    await sock.groupParticipantsUpdate(from, [target], "remove");
-                    await sock.sendMessage(from, { text: "👋 Sayonara! Beban grup berkurang satu." }, { quoted: msg });
-                } catch (e) {
-                    await sock.sendMessage(from, { text: "Gagal kick. Mungkin dia sesama Admin/Bot." }, { quoted: msg });
-                }
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+                
+                // 1. Tambahkan ke database blacklist
+                addBlacklist(users);
+                
+                // 2. Tendang dari grup
+                await sock.groupParticipantsUpdate(from, [users], "remove");
+                reply(`Selesai! Nomor @${users.split('@')[0]} sudah di-blacklist permanen.`);
             }
 
             // 3. GROUP OPEN / CLOSE
@@ -5573,52 +5581,39 @@ _Video dikirim tanpa watermark!_`;
             }
 
 // =================================================
-            // FITUR GETS (SEARCH STICKER) - VERSI FIX
+            // FITUR GETS (SEARCH STICKER) - VERSI RYZE
             // =================================================
             if (cmd === "gets" || cmd === "!gets") {
-                // 1. Cek Argumen
-                if (!args || !args[0]) {
-                     return sock.sendMessage(from, { text: "⚠️ Mau cari stiker apa Bang?\nContoh: *!gets kucing*" }, { quoted: msg });
-                }
+                const query = args.join(" ");
+                if (!query) return sock.sendMessage(from, { text: "⚠️ Mau cari stiker apa Bang?\nContoh: *!gets kucing*" }, { quoted: msg });
 
-                // Log biar tau bot ngerespon atau nggak
-                console.log(`[GETS] Mencari stiker: ${args.join(" ")}`);
+                console.log(`[GETS] Mencari stiker: ${query}`);
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
-                    const query = args.join(" ");
-                    // API Tenor dengan Timeout 5 detik
-                    // Key 'L1V...' adalah public key resmi
-                    const { data } = await axios.get(`https://g.tenor.com/v1/search?q=${query}&key=L1V2DDE884E0&limit=20`, {
-                        timeout: 5000 // Batas waktu 5 detik
-                    });
-
-                    const results = data.results;
-
-                    if (!results || results.length === 0) {
-                        return sock.sendMessage(from, { text: `❌ Yah, stiker *${query}* gak ketemu.` }, { quoted: msg });
+                    // Pakai API Ryzendesu (Free & No API Key Needed)
+                    const { data } = await axios.get(`https://api.ryzendesu.vip/api/sticker/getsticker?q=${encodeURIComponent(query)}`);
+                    
+                    // Cek jika ada hasil
+                    if (!data || !data.result || data.result.length === 0) {
+                        return sock.sendMessage(from, { text: `❌ Stiker *${query}* tidak ditemukan.` }, { quoted: msg });
                     }
 
-                    // Ambil Random
-                    const randomSticker = results[Math.floor(Math.random() * results.length)];
-                    const stickerUrl = randomSticker.media[0].gif.url;
+                    // Ambil 1 stiker secara acak
+                    const randomSticker = data.result[Math.floor(Math.random() * data.result.length)];
 
-                    console.log(`[GETS] Dapat URL: ${stickerUrl}`);
+                    console.log(`[GETS] Mengirim stiker dari: ${randomSticker}`);
 
-                    // Kirim Stiker
+                    // Kirim sebagai stiker
                     await sock.sendMessage(from, { 
-                        sticker: { url: stickerUrl } 
+                        sticker: { url: randomSticker } 
                     }, { quoted: msg });
 
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
                     console.error("[GETS] Error:", e.message);
-                    
-                    let pesanError = "❌ Gagal mengambil stiker.";
-                    if (e.code === 'ECONNABORTED') pesanError = "❌ Koneksi ke Server Stiker timeout (lemot). Coba lagi.";
-                    
-                    await sock.sendMessage(from, { text: pesanError }, { quoted: msg });
+                    await sock.sendMessage(from, { text: "❌ Server stiker sedang sibuk atau down. Coba lagi nanti." }, { quoted: msg });
                 }
             }
 
