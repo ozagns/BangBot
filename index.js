@@ -7100,13 +7100,18 @@ ${bar}
             }
 
 // =================================================
-            // FITUR IQC (IPHONE STYLE VIA SIPUTZX API)
+            // FITUR IQC (FIXED PREFIX & LOGGING)
             // =================================================
-            if (cmd === "iqc" || cmd === "iphonechat" || cmd === "ipchat") {
+            // Cek command pake tanda seru (!) dan tanpa tanda seru biar aman
+            if (cmd === "iqc" || cmd === "!iqc" || cmd === "iphonechat" || cmd === "!iphonechat") {
+                
+                // 1. Log tanda masuk (biar ketahuan di terminal)
+                console.log(`[IQC] Perintah diterima dari: ${pushname}`);
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
-                // 1. Ambil Input (Bisa dari teks langsung atau reply pesan)
-                let input = teks.replace(cmd, "").trim();
+                // 2. Ambil Input
+                // Kita replace baik "!iqc" maupun "iqc" biar bersih
+                let input = teks.replace("!iqc", "").replace("iqc", "").replace("!iphonechat", "").replace("iphonechat", "").trim();
 
                 // Kalau kosong tapi user nge-reply chat orang, ambil teks reply-nya
                 if (!input && msg.message.extendedTextMessage?.contextInfo?.quotedMessage) {
@@ -7116,49 +7121,45 @@ ${bar}
 
                 if (!input) {
                     return sock.sendMessage(from, { 
-                        text: "⚠️ Masukkan teks!\n\nContoh Biasa:\n*!iqc Halo Sayang*\n\nContoh Custom (Provider | Batre):\n*!iqc Halo Sayang | Indosat | 15*" 
+                        text: "⚠️ Masukkan teks!\n\nContoh Biasa:\n*!iqc Halo Sayang*\n\nContoh Custom:\n*!iqc Halo | Telkomsel | 88*" 
                     }, { quoted: msg });
                 }
 
-                // 2. Parsing Data (Teks | Provider | Batre)
-                // Kita pisahkan pakai tanda "|" kalau user mau custom
+                // 3. Parsing Data (Teks | Provider | Batre)
                 let [messageText, carrier, battery] = input.split("|");
 
-                // Set Default Value (Kalau user gak isi, pakai default dari script asli)
-                if (!messageText) messageText = input; // Kalau split gagal, anggap semua input adalah pesan
-                if (!carrier) carrier = "TELKOMSEL";   // Default
-                if (!battery) battery = "88";          // Default
+                // Default Value
+                if (!messageText) messageText = input; 
+                if (!carrier) carrier = "TELKOMSEL";   
+                if (!battery) battery = "88";          
 
-                // Bersihkan spasi berlebih
+                // Bersihkan data
                 messageText = messageText.trim();
                 carrier = carrier.trim();
-                battery = battery.trim().replace("%", ""); // API minta angka aja, buang tanda %
+                battery = battery.trim().replace("%", ""); 
 
-                // 3. Ambil Waktu Real-time (WIB)
+                // 4. Ambil Waktu Real-time
                 let date = new Date();
                 let time = date.toLocaleTimeString('id-ID', { 
-                    hour: '2-digit', 
-                    minute: '2-digit', 
-                    hour12: false, 
-                    timeZone: 'Asia/Jakarta' 
+                    hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' 
                 });
 
-                // 4. Panggil API Siputzx
-                // Parameter: time, messageText, carrierName, batteryPercentage, signalStrength, emojiStyle
+                // 5. Panggil API Siputzx
                 let url = `https://brat.siputzx.my.id/iphone-quoted?time=${encodeURIComponent(time)}&messageText=${encodeURIComponent(messageText)}&carrierName=${encodeURIComponent(carrier)}&batteryPercentage=${encodeURIComponent(battery)}&signalStrength=4&emojiStyle=apple`;
 
+                console.log(`[IQC] Requesting URL: ${url}`);
+
                 try {
-                    // 5. Kirim Gambar
                     await sock.sendMessage(from, {
                         image: { url: url },
-                        caption: `📱 *iMessage Style*\nProvider: ${carrier} | Batre: ${battery}%`
+                        caption: `📱 *iMessage Generated*`
                     }, { quoted: msg });
 
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (err) {
-                    console.error('Error iMessage:', err);
-                    await sock.sendMessage(from, { text: "⚠️ Gagal membuat gambar. Server API mungkin sedang down." }, { quoted: msg });
+                    console.error('[IQC] Error:', err);
+                    await sock.sendMessage(from, { text: "⚠️ Gagal koneksi ke API." }, { quoted: msg });
                 }
             }
 
