@@ -7152,7 +7152,7 @@ ${bar}
                 try {
                     await sock.sendMessage(from, {
                         image: { url: url },
-                        caption: `📱 *iMessage Generated*`
+                        caption: ``
                     }, { quoted: msg });
 
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
@@ -7674,55 +7674,94 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
             }
 
 // =================================================
-            // FITUR LIRIK (VIA POPCAT - ANTI 401)
+            // FITUR LIRIK (GENIUS SCRAPER)
+            // 🔗 CEK API SEARCH: https://genius.com/api/search/multi?q=Komang
+            // 🔗 CEK WEB (SOURCE): https://genius.com
             // =================================================
-            if (cmd === "lirik" || cmd === "lyrics") {
-                // 1. Ambil Judul Lagu (Hapus command dari teks)
-                // Kita pakai logika replace biar bersih dari prefix
+            if (cmd === "!lirik" || cmd === "!lyrics") {
                 let songName = teks.replace(/!lirik|lirik|!lyrics|lyrics/gi, "").trim();
 
                 if (!songName) {
-                    return sock.sendMessage(from, { text: "⚠️ Masukkan judul lagu!\nContoh: *!lirik Rahasia Hati - Nidji*" }, { quoted: msg });
+                    return sock.sendMessage(from, { text: "⚠️ Mau cari lagu apa Bang?\nContoh: *!lirik Komang*" }, { quoted: msg });
                 }
 
-                console.log(`[LIRIK] Mencari: ${songName}`);
+                console.log(`[LIRIK] Mencari di Genius: ${songName}`);
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
-                    // 2. Request ke PopCat API (Gratis & Stabil)
-                    const { data } = await axios.get(`https://api.popcat.xyz/lyrics?song=${encodeURIComponent(songName)}`);
+                    // Wajib ada Cheerio di package.json
+                    const cheerio = require("cheerio");
 
-                    // 3. Cek apakah lirik ditemukan
-                    if (!data || data.error || !data.lyrics) {
-                        return sock.sendMessage(from, { text: `❌ Lirik lagu *"${songName}"* tidak ditemukan.` }, { quoted: msg });
-                    }
-
-                    // 4. Susun Pesan
-                    let caption = `🎤 *${data.title}*\n`;
-                    caption += `👤 *Artist:* ${data.artist}\n`;
-                    caption += `──────────────────\n\n`;
-                    caption += `${data.lyrics}`;
-
-                    // 5. Kirim dengan Thumbnail Album (External Ad Reply)
-                    await sock.sendMessage(from, { 
-                        text: caption,
-                        contextInfo: {
-                            externalAdReply: {
-                                title: "Lyrics Finder",
-                                body: `${data.artist} - ${data.title}`,
-                                thumbnailUrl: data.image, // PopCat ngasih gambar album juga!
-                                sourceUrl: "https://spotify.com",
-                                mediaType: 1,
-                                renderLargerThumbnail: true
+                    // 1. TAHAP SEARCH (Mencari Link)
+                    const searchRes = await axios.get(`https://genius.com/api/search/multi?per_page=5&q=${encodeURIComponent(songName)}`);
+                    const sections = searchRes.data.response.sections;
+                    let hit = null;
+                    
+                    // Mencari hasil lagu terbaik dari beberapa section (top_hit/song)
+                    for (let section of sections) {
+                        if (section.type === 'song' || section.type === 'top_hit') {
+                            if (section.hits && section.hits.length > 0) {
+                                hit = section.hits[0].result;
+                                break;
                             }
                         }
+                    }
+
+                    if (!hit) {
+                        return sock.sendMessage(from, { text: `❌ Lagu *"${songName}"* tidak ditemukan di database Genius.` }, { quoted: msg });
+                    }
+
+                    console.log(`[LIRIK] Scraping dari: ${hit.url}`);
+
+                    // 2. TAHAP SCRAPING (Mengambil Teks dari Web)
+                    const { data: html } = await axios.get(hit.url, {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36'
+                        }
+                    });
+                    const $ = cheerio.load(html);
+
+                    let lyrics = "";
+                    // Selector Container Lirik Genius terbaru
+                    $('div[data-lyrics-container="true"]').each((i, el) => {
+                        $(el).find('br').replaceWith('\n'); // Ubah <br> jadi enter
+                        lyrics += $(el).text() + "\n\n";
+                    });
+
+                    // Pembersihan teks (menghapus tag [Chorus], [Verse], dll jika ingin lebih bersih)
+                    // lyrics = lyrics.replace(/\[.*?\]/g, ''); 
+
+                    if (!lyrics.trim()) {
+                        // Fallback ke selector lama jika struktur web berbeda
+                        lyrics = $(".lyrics").text().trim();
+                    }
+
+                    if (!lyrics.trim()) {
+                        return sock.sendMessage(from, { text: "❌ Lirik ditemukan, tapi gagal diekstrak. Website Genius mungkin sedang update struktur." }, { quoted: msg });
+                    }
+
+                    // 3. SUSUN PESAN & KIRIM
+                    let caption = `*${hit.title}*\n`;
+                    caption += `*Artist:* ${hit.artist_names}\n`;
+                    caption += `──────────────────\n\n`;
+                    caption += `${lyrics.trim()}`;
+
+                    await sock.sendMessage(from, { 
+                        image: { url: hit.song_art_image_url || hit.header_image_url },
+                        caption: caption
                     }, { quoted: msg });
 
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
-                } catch (err) {
-                    console.error("[LIRIK] Error:", err.message);
-                    await sock.sendMessage(from, { text: "❌ Terjadi kesalahan server. Coba judul lain." }, { quoted: msg });
+                } catch (e) {
+                    console.error("[LIRIK] Error:", e.message);
+                    let errMsg = "❌ Terjadi kesalahan saat mengambil lirik.";
+                    
+                    if (e.message.includes("cheerio")) {
+                        errMsg = "⚠️ *ERROR:* Modul `cheerio` belum ada!\nTambahkan `\"cheerio\": \"^1.0.0\"` di package.json.";
+                    }
+                    
+                    await sock.sendMessage(from, { text: errMsg }, { quoted: msg });
                 }
             }
 
