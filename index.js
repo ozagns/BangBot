@@ -7674,7 +7674,7 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
             }
 
 // =================================================
-            // FITUR LIRIK (KAPANLAGI SCRAPER - KEARIFAN LOKAL)
+            // FITUR LIRIK (DUCKDUCKGO -> KAPANLAGI)
             // =================================================
             if (cmd === "!lirik" || cmd === "!lyrics") {
                 let songName = teks.replace(/!lirik|lirik|!lyrics|lyrics/gi, "").trim();
@@ -7683,31 +7683,33 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                     return sock.sendMessage(from, { text: "⚠️ Mau cari lagu apa Bang?\nContoh: *!lirik Komang*" }, { quoted: msg });
                 }
 
-                console.log(`[LIRIK] Mencari di KapanLagi: ${songName}`);
+                console.log(`[LIRIK] Mencari via DuckDuckGo: ${songName}`);
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
                     const cheerio = require("cheerio");
 
-                    // 1. Cari Link KapanLagi via Google
-                    // Kita pakai User-Agent HP biar Google ngasih hasil yang enteng
-                    const searchUrl = `https://www.google.com/search?q=site:lirik.kapanlagi.com+${encodeURIComponent(songName)}&hl=id`;
+                    // 1. CARI LINK PAKAI DUCKDUCKGO (Lebih aman dari Google)
+                    // Kita cari khusus di situs lirik.kapanlagi.com
+                    const searchUrl = `https://html.duckduckgo.com/html/?q=site:lirik.kapanlagi.com+${encodeURIComponent(songName)}`;
+                    
                     const { data: searchHtml } = await axios.get(searchUrl, {
                         headers: { 
+                            // Pura-pura jadi browser HP biar gak diblokir
                             'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36'
                         }
                     });
 
                     const $ = cheerio.load(searchHtml);
                     
-                    // Ambil link pertama yang mengarah ke lirik.kapanlagi.com
+                    // Ambil link pertama dari hasil pencarian DuckDuckGo (class .result__a)
                     let targetUrl = null;
-                    $("a").each((i, el) => {
+                    $(".result__a").each((i, el) => {
                         const link = $(el).attr("href");
                         if (link && link.includes("lirik.kapanlagi.com/artis/") && !targetUrl) {
-                            // Google kadang ngasih link kotor (/url?q=...), kita bersihin
-                            if (link.startsWith("/url?q=")) {
-                                targetUrl = link.split("/url?q=")[1].split("&")[0];
+                            // DuckDuckGo kadang ngasih link redirect, kita ambil parameter uddg-nya kalau ada
+                            if (link.includes("uddg=")) {
+                                targetUrl = decodeURIComponent(link.split("uddg=")[1].split("&")[0]);
                             } else {
                                 targetUrl = link;
                             }
@@ -7715,12 +7717,12 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                     });
 
                     if (!targetUrl) {
-                        return sock.sendMessage(from, { text: `❌ Lirik *"${songName}"* tidak ditemukan di KapanLagi.` }, { quoted: msg });
+                        return sock.sendMessage(from, { text: `❌ Lirik *"${songName}"* tidak ditemukan (DuckDuckGo).` }, { quoted: msg });
                     }
 
-                    console.log(`[LIRIK] Scraping: ${targetUrl}`);
+                    console.log(`[LIRIK] Target Link: ${targetUrl}`);
 
-                    // 2. Buka Link KapanLagi & Ambil Isinya
+                    // 2. SCRAPING HALAMAN KAPANLAGI
                     const { data: lyricsHtml } = await axios.get(targetUrl, {
                         headers: { 
                             'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36'
@@ -7729,44 +7731,41 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
                     
                     const $$ = cheerio.load(lyricsHtml);
                     
-                    // KapanLagi naruh lirik di class .lirik_line atau div body
-                    // Kita ambil Judul dulu
+                    // Ambil Judul & Artis
                     const title = $$(".song-title").text().trim() || $$("h1").text().trim() || songName;
                     const artist = $$(".artist-name").text().trim() || "Unknown Artist";
 
-                    // Ambil Lirik
+                    // Ambil Lirik (Parsing Baris per Baris biar rapi)
                     let lyrics = "";
                     
-                    // Coba ambil dari container utama
-                    // KapanLagi kadang misahin per baris pake <br> atau span
+                    // Coba selektor span.lirik_line (Format Baru)
                     $$("span.lirik_line").each((i, el) => {
                         lyrics += $$(el).text().trim() + "\n";
                     });
 
-                    // Fallback kalau span.lirik_line kosong (format lama)
+                    // Coba selektor div.lirik_line (Format Lama)
                     if (!lyrics.trim()) {
                         lyrics = $$("div.lirik_line").text().trim();
                     }
 
+                    // Fallback Terakhir (Ambil body kalau kepepet)
                     if (!lyrics.trim()) {
-                        return sock.sendMessage(from, { text: "❌ Link ketemu, tapi gagal ambil teks (format web berubah)." }, { quoted: msg });
+                         return sock.sendMessage(from, { text: "❌ Link ketemu, tapi format web KapanLagi berubah." }, { quoted: msg });
                     }
 
-                    // 3. Kirim Hasil
+                    // 3. KIRIM HASIL
                     let caption = `*${title}*\n`;
                     caption += `*Artist:* ${artist}\n`;
                     caption += `*Source:* KapanLagi.com\n`;
                     caption += `──────────────────\n\n`;
                     caption += `${lyrics.trim()}`;
 
-                    // Kirim Teks Only (Biar aman anti-error gambar)
                     await sock.sendMessage(from, { text: caption }, { quoted: msg });
-
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
                     console.error("[LIRIK] Error:", e.message);
-                    await sock.sendMessage(from, { text: "❌ Terjadi kesalahan saat scraping Google/KapanLagi." }, { quoted: msg });
+                    await sock.sendMessage(from, { text: "❌ Terjadi kesalahan koneksi." }, { quoted: msg });
                 }
             }
 
