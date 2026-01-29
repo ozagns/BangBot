@@ -5049,7 +5049,7 @@ _Untuk membalas balik, gunakan command *!confess* lagi._`;
             // YT, FB, TH → yt-dlp
             // TT, X, PIN → API/helper khusus
             // IG punya handler sendiri di bawah
-            if (["!yt", "!fb", "!th", "!tt", "!pin"].includes(cmd)) {
+            if (["!yt", "!th", "!tt", "!pin"].includes(cmd)) {
                 // Ambil URL setelah command
                 const url = teks.replace(new RegExp(cmd, "i"), "").trim().split(" ")[0];
 
@@ -5168,7 +5168,7 @@ _Video dikirim tanpa watermark!_`;
                 }
 
                 // ---------- DEFAULT: YT / FB / TH via yt-dlp ----------
-                // (hanya !yt, !fb, !th yang jatuh ke sini)
+                // (hanya !yt, !th yang jatuh ke sini)
                 await sock.sendMessage(from, { text: "Proses Bang!" });
 
                 try {
@@ -5187,6 +5187,71 @@ _Video dikirim tanpa watermark!_`;
                     await sock.sendMessage(from, {
                         text: "Gagal mengunduh video. Coba cek URL atau coba lagi nanti."
                     });
+                }
+            }
+
+// =================================================
+            // FITUR FACEBOOK DOWNLOADER (FAA API - STYLE IF CMD)
+            // ✅ Support HD & SD
+            // ✅ Support Link Reels & Video Biasa
+            // =================================================
+            if (cmd === "!fb") {
+                // Ambil link & bersihkan command
+                let q = teks.replace(/!fb/gi, "").trim();
+                
+                // Auto-fix URL (kalau user lupa https)
+                if (q && !q.startsWith("http")) q = "https://" + q;
+
+                // Validasi Link FB
+                if (!q || !q.match(/(facebook\.com|fb\.watch|fb\.com)/gi)) {
+                    return sock.sendMessage(from, { text: "⚠️ Linknya mana Bang? Pastikan link video Facebook ya.\nContoh: *!fb https://www.facebook.com/reel/xxxxx*" }, { quoted: msg });
+                }
+
+                console.log(`[FB] Memproses: ${q}`);
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+
+                try {
+                    // Tembak API FAA
+                    const { data } = await axios.get(`https://api-faa.my.id/faa/fbdownload?url=${encodeURIComponent(q)}`);
+                    
+                    // Cek Status API
+                    if (!data.status || !data.result) {
+                        return sock.sendMessage(from, { text: "❌ Video tidak ditemukan atau diprivate." }, { quoted: msg });
+                    }
+
+                    const res = data.result;
+                    const media = res.media;
+                    const info = res.info;
+
+                    // Logika Pemilihan Kualitas (HD Prioritas)
+                    // Kita ambil langsung dari key video_hd atau video_sd
+                    let videoUrl = media.video_hd || media.video_sd;
+                    let quality = media.video_hd ? "HD (720p+)" : "SD (Standard)";
+
+                    if (!videoUrl) {
+                         return sock.sendMessage(from, { text: "❌ Gagal mendapatkan link video." }, { quoted: msg });
+                    }
+
+                    // Susun Caption
+                    let caption = `*Facebook Downloader*\n\n`;
+                    caption += `*Title:* ${info.title || "No Title"}\n`;
+                    caption += `*Author:* ${res.author.username || "Unknown"}\n`;
+                    caption += `*Duration:* ${info.duration || "-"} detik\n`;
+                    caption += `*Quality:* ${quality}\n`;
+                    caption += `*Source:* Facebook`;
+
+                    // Kirim Video
+                    await sock.sendMessage(from, { 
+                        video: { url: videoUrl }, 
+                        caption: caption,
+                        gifPlayback: false
+                    }, { quoted: msg });
+
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+
+                } catch (e) {
+                    console.error("[FB] Error:", e.message);
+                    await sock.sendMessage(from, { text: "❌ Server API sedang sibuk/down." }, { quoted: msg });
                 }
             }
 
