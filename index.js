@@ -5573,32 +5573,39 @@ _Video dikirim tanpa watermark!_`;
             }
 
 // =================================================
-            // FITUR GETS (GET STICKER) - FIX ERROR 401
+            // FITUR GETS (SEARCH STICKER) - VERSI FIX
             // =================================================
-            if (cmd === "gets") {
-                if (!args[0]) return reply(`⚠️ Mau cari stiker apa Bang?\nContoh: *${cmd} tuman*`);
-                
+            if (cmd === "gets" || cmd === "!gets") {
+                // 1. Cek Argumen
+                if (!args || !args[0]) {
+                     return sock.sendMessage(from, { text: "⚠️ Mau cari stiker apa Bang?\nContoh: *!gets kucing*" }, { quoted: msg });
+                }
+
+                // Log biar tau bot ngerespon atau nggak
+                console.log(`[GETS] Mencari stiker: ${args.join(" ")}`);
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
                     const query = args.join(" ");
-                    
-                    // GANTI API GIPHY YANG MATI DENGAN TENOR (LEBIH STABIL)
-                    // Key 'L1V...' ini adalah public key resmi Tenor
-                    const tenorUrl = `https://g.tenor.com/v1/search?q=${query}&key=L1V2DDE884E0&limit=20`;
-                    
-                    const { data } = await axios.get(tenorUrl);
+                    // API Tenor dengan Timeout 5 detik
+                    // Key 'L1V...' adalah public key resmi
+                    const { data } = await axios.get(`https://g.tenor.com/v1/search?q=${query}&key=L1V2DDE884E0&limit=20`, {
+                        timeout: 5000 // Batas waktu 5 detik
+                    });
+
                     const results = data.results;
 
                     if (!results || results.length === 0) {
-                        return reply(`❌ Yah, stiker *${query}* gak ketemu.`);
+                        return sock.sendMessage(from, { text: `❌ Yah, stiker *${query}* gak ketemu.` }, { quoted: msg });
                     }
 
-                    // Ambil 1 stiker secara acak biar gak bosenin
+                    // Ambil Random
                     const randomSticker = results[Math.floor(Math.random() * results.length)];
                     const stickerUrl = randomSticker.media[0].gif.url;
 
-                    // Kirim langsung sebagai stiker
+                    console.log(`[GETS] Dapat URL: ${stickerUrl}`);
+
+                    // Kirim Stiker
                     await sock.sendMessage(from, { 
                         sticker: { url: stickerUrl } 
                     }, { quoted: msg });
@@ -5606,8 +5613,12 @@ _Video dikirim tanpa watermark!_`;
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
-                    console.error("Gets Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Gagal mengambil stiker. Server lagi sibuk." }, { quoted: msg });
+                    console.error("[GETS] Error:", e.message);
+                    
+                    let pesanError = "❌ Gagal mengambil stiker.";
+                    if (e.code === 'ECONNABORTED') pesanError = "❌ Koneksi ke Server Stiker timeout (lemot). Coba lagi.";
+                    
+                    await sock.sendMessage(from, { text: pesanError }, { quoted: msg });
                 }
             }
 
