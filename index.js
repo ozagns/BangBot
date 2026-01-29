@@ -10431,105 +10431,78 @@ Asli  : ${finalUrl}`
                 return;
             }
 
-            // =================================================
-            // STALKIG — Cek info akun Instagram (publik)
+// =================================================
+            // FITUR STALK IG (SCRAPER MOLLYGRAM)
             // =================================================
             if (cmd === "!stalkig") {
-                const raw = teks.replace(/!stalkig/i, "").trim();
+                const username = teks.replace(/!stalkig|stalkig/gi, "").trim();
+                
+                if (!username) return sock.sendMessage(from, { text: "⚠️ Masukkan username Instagram!\nContoh: *!stalkig rafinagita1717*" }, { quoted: msg });
 
-                if (!raw) {
-                    await sock.sendMessage(from, {
-                        text:
-            `Format: *!stalkig username*
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
-            Contoh:
-            !stalkig instagram
-            !stalkig bangbot_official`
-                    });
-                    return;
-                }
+                // --- FUNCTION SCRAPER ---
+                const getIGProfile = async (target) => {
+                    const axios = require("axios");
+                    try {
+                        const url = `https://media.mollygram.com/?url=${encodeURIComponent(target)}`;
+                        const headers = {
+                            'accept': '*/*',
+                            'referer': 'https://mollygram.com/',
+                            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36'
+                        };
 
-                // Bersihkan username: hilangkan @ kalau ada
-                const username = raw.replace(/^@/, "").split(" ")[0];
+                        const { data } = await axios.get(url, { headers });
+                        if (data.status !== 'ok') return null;
 
-                await sock.sendMessage(from, {
-                    text: `Cek info Instagram *@${username}* dulu ya Bang!`
-                });
+                        const html = data.html;
+                        const getMatch = (regex) => {
+                            const match = html.match(regex);
+                            return match ? match[1].trim() : null;
+                        };
+
+                        return {
+                            username: getMatch(/<h4 class="mb-0">([^<]+)<\/h4>/),
+                            fullname: getMatch(/<p class="text-muted">([^<]+)<\/p>/),
+                            bio: getMatch(/<p class="text-dark"[^>]*>([^<]+)<\/p>/),
+                            profilePic: getMatch(/<img[^>]*rounded-circle[^>]*src="([^"]+)"/i) || getMatch(/<img[^>]*src="([^"]+)"[^>]*rounded-circle/i),
+                            posts: getMatch(/<span class="d-block h5 mb-0">([^<]+)<\/span>\s*<div[^>]*>posts<\/div>/i),
+                            followers: getMatch(/<span class="d-block h5 mb-0">([^<]+)<\/span>\s*<div[^>]*>followers<\/div>/i),
+                            following: getMatch(/<span class="d-block h5 mb-0">([^<]+)<\/span>\s*<div[^>]*>following<\/div>/i)
+                        };
+                    } catch (e) { return null; }
+                };
 
                 try {
-                    // Endpoint publik (kadang berubah, jadi memang tidak 100% pasti)
-                    const url = `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`;
+                    let res = await getIGProfile(username);
 
-                    const res = await axios.get(url, {
-                        headers: {
-                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-                            "Accept": "application/json",
-                            "X-IG-App-ID": "936619743392459"
-                        },
-                        // Biar kalau status bukan 200 tetap masuk ke catch manual kita
-                        validateStatus: () => true
-                    });
-
-                    if (!res.data || !res.data.data || !res.data.data.user) {
-                        await sock.sendMessage(from, {
-                            text:
-            `Gagal ambil data Instagram *@${username}*.
-
-            Kemungkinan:
-            - Usernamenya salah / tidak ada
-            - Akunnya private / dibatasi
-            - Instagram lagi ngerestriksi akses publik`
-                        });
-                        return;
+                    if (!res || !res.username) {
+                        return sock.sendMessage(from, { text: "❌ Profil tidak ditemukan atau akun di-private." }, { quoted: msg });
                     }
 
-                    const u = res.data.data.user;
+                    let caption = `*Username:* ${res.username}\n` +
+                                  `*Fullname:* ${res.fullname || '-'}\n` +
+                                  `*Posts:* ${res.posts || '0'}\n` +
+                                  `*Followers:* ${res.followers || '0'}\n` +
+                                  `*Following:* ${res.following || '0'}\n` +
+                                  `*Bio:* ${res.bio || '-'}\n\n` +
+                                  `https://instagram.com/${res.username}`;
 
-                    const fullName   = u.full_name || "-";
-                    const bio        = (u.biography || "").trim() || "(bio kosong)";
-                    const followers  = u.edge_followed_by?.count ?? 0;
-                    const following  = u.edge_follow?.count ?? 0;
-                    const posts      = u.edge_owner_to_timeline_media?.count ?? 0;
-                    const isPrivate  = u.is_private ? "Ya (Private)"   : "Tidak (Public)";
-                    const isVerified = u.is_verified ? "Ya (Verified)" : "Tidak";
+                    if (res.profilePic) {
+                        await sock.sendMessage(from, { 
+                            image: { url: res.profilePic }, 
+                            caption: caption 
+                        }, { quoted: msg });
+                    } else {
+                        await sock.sendMessage(from, { text: caption }, { quoted: msg });
+                    }
 
-                    const link = `https://www.instagram.com/${username}`;
-
-                    await sock.sendMessage(from, {
-                        text:
-            `*Instagram Stalker*
-
-            Username : @${username}
-            Nama     : ${fullName}
-            Verified : ${isVerified}
-            Private  : ${isPrivate}
-
-            Followers: ${followers}
-            Following: ${following}
-            Posting  : ${posts}
-
-            Bio:
-            ${bio}
-
-            Link profil:
-            ${link}`
-                    });
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (err) {
-                    console.error("stalkig error:", err);
-                    await sock.sendMessage(from, {
-                        text:
-            `Gagal mengambil data Instagram *@${username}*.
-
-            Kemungkinan:
-            - Koneksi server ke Instagram bermasalah
-            - Instagram mengubah sistem / memblok request
-
-            Coba lagi nanti ya Bang.`
-                    });
+                    console.error(err);
+                    await sock.sendMessage(from, { text: "❌ Terjadi kesalahan saat stalking." }, { quoted: msg });
                 }
-
-                return;
             }
 
             // =================================================
