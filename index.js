@@ -5123,11 +5123,6 @@ _Video dikirim tanpa watermark!_`;
                         const { data: backupRes } = await axios.get(backupUrl);
                         
                         if (backupRes.status !== 200) throw new Error("Backup gagal.");
-
-                        await sock.sendMessage(from, { 
-                            video: { url: backupRes.data.data.no_watermark }, 
-                            caption: "✅ (Backup Server) Sukses Download!" 
-                        }, { quoted: msg });
                         
                     } catch (e2) {
                         await sock.sendMessage(from, { text: "❌ Gagal download Bang. Videonya diprivate atau server lagi down." }, { quoted: msg });
@@ -5152,10 +5147,6 @@ _Video dikirim tanpa watermark!_`;
                         return;
                     }
 
-                    await sock.sendMessage(from, {
-                        text: "Proses Bang!"
-                    }, { quoted: msg });
-
                     const ok = await handlePinterestWithFallback(sock, from, msg, url);
 
                     if (!ok) {
@@ -5169,17 +5160,12 @@ _Video dikirim tanpa watermark!_`;
 
                 // ---------- DEFAULT: YT / FB / TH via yt-dlp ----------
                 // (hanya !yt, !th yang jatuh ke sini)
-                await sock.sendMessage(from, { text: "Proses Bang!" });
 
                 try {
                     const out = `./dl_${Date.now()}.mp4`;
                     await downloadWithYtDlp(url, out);
 
                     const video = fs.readFileSync(out);
-                    await sock.sendMessage(from, {
-                        video,
-                        caption: "Selesai Bang!"
-                    });
 
                     fs.unlinkSync(out);
                 } catch (err) {
@@ -5311,62 +5297,87 @@ _Video dikirim tanpa watermark!_`;
                 }
             }
 
-if (cmd === "!ig" || cmd === "!instagram") {
-                // CARA AMBIL URL YANG AMAN:
-                // Kita cari teks yang mengandung "instagram.com" di dalam pesan
-                let urlInput = teks.match(/https?:\/\/(www\.)?instagram\.com\/[^\s]+/gi);
-                let url = urlInput ? urlInput[0] : null;
+// =================================================
+            // FITUR INSTAGRAM (RECURSIVE FIX)
+            // =================================================
+            if (cmd === "!ig" || cmd === "!instagram") {
+                const url = teks.replace(cmd, "").trim();
 
                 if (!url) {
-                    return sock.sendMessage(from, { text: "⚠️ Link Instagram-nya mana Bang? Pastikan linknya lengkap ya." }, { quoted: msg });
+                    return sock.sendMessage(from, { text: `⚠️ Link Instagram-nya mana Bang?\nContoh: *${cmd} https://www.instagram.com/reel/xxxx/*` }, { quoted: msg });
                 }
 
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
-                    const { exec } = require("child_process");
-                    // Pastikan file cookies ada di folder yang sama dengan script ini
-                    const command = `gallery-dl -j -q --cookies "instagram_cookies.txt" "${url}"`;
+                    // Buat folder sementara unik
+                    const folderName = `ig_${Date.now()}`;
+                    const outputDir = path.join(__dirname, folderName);
 
-                    console.log(`[IG] Executing: ${command}`); // Buat ngecek di log linknya udah bener belum
+                    if (!fs.existsSync(outputDir)) {
+                        fs.mkdirSync(outputDir);
+                    }
 
-                    exec(command, async (error, stdout, stderr) => {
-                        if (error) {
-                            console.error(`[IG] Error Exec: ${error.message}`);
-                            return sock.sendMessage(from, { text: "❌ Gagal mengambil data. Pastikan link benar & akun tidak diprivate." }, { quoted: msg });
+                    // Jalankan Gallery-DL
+                    // Kita pakai execSync biar bot nungguin download selesai dulu baru lanjut
+                    const { execSync } = require("child_process");
+
+                    // Command download
+                    execSync(`gallery-dl --cookies "instagram_cookies.txt" -d "${outputDir}" "${url}"`);
+
+                    // --- FUNGSI PENCARI FILE RECURSIVE (PENCARI PINTAR) ---
+                    // Fungsi ini akan mencari file sampai ke folder terdalam
+                    const getAllFiles = (dirPath, arrayOfFiles) => {
+                        files = arrayOfFiles || [];
+                        const items = fs.readdirSync(dirPath);
+
+                        items.forEach((item) => {
+                            if (fs.statSync(path.join(dirPath, item)).isDirectory()) {
+                                files = getAllFiles(path.join(dirPath, item), files);
+                            } else {
+                                files.push(path.join(dirPath, item));
+                            }
+                        });
+
+                        return files;
+                    };
+
+                    // Cari semua file di folder output
+                    const foundFiles = getAllFiles(outputDir);
+
+                    // Filter cuma ambil file video/foto (buang file json/txt kalau ada)
+                    const mediaFiles = foundFiles.filter(file =>
+                        file.endsWith(".mp4") || file.endsWith(".jpg") || file.endsWith(".png") || file.endsWith(".jpeg")
+                    );
+
+                    if (mediaFiles.length === 0) {
+                        throw new Error("File media tidak ditemukan setelah download.");
+                    }
+
+                    // Kirim semua file yang ditemukan
+                    for (let file of mediaFiles) {
+                        // Cek Video atau Foto
+                        if (file.endsWith(".mp4")) {
+                            await sock.sendMessage(from, {
+                                video: fs.readFileSync(file),
+                                caption: ""
+                            }, { quoted: msg });
+                        } else {
+                            await sock.sendMessage(from, {
+                                image: fs.readFileSync(file),
+                                caption: ""
+                            }, { quoted: msg });
                         }
+                    }
 
-                        const rawLines = stdout.trim().split("\n");
-                        if (!stdout || rawLines.length === 0) {
-                             return sock.sendMessage(from, { text: "❌ Tidak ada media ditemukan. Cek cookies atau link." }, { quoted: msg });
-                        }
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
-                        let firstData = JSON.parse(rawLines[0]);
-                        const username = firstData.username || firstData.owner?.username || "Unknown";
-                        const captionRaw = firstData.description || firstData.caption || "-";
-                        
-                        let captionText = ``;
-                        captionText += `*User:* @${username}\n`;
-                        captionText += `*Caption:*\n${captionRaw}\n\n`;
-                        captionText += `*Source:* Instagram`;
+                    // Bersihkan file sampah setelah dikirim
+                    fs.rmSync(outputDir, { recursive: true, force: true });
 
-                        for (let i = 0; i < rawLines.length; i++) {
-                            try {
-                                const item = JSON.parse(rawLines[i]);
-                                const mediaUrl = item.url || item.display_url;
-                                const finalCaption = (i === 0) ? captionText : "";
-
-                                if (mediaUrl.includes(".mp4") || mediaUrl.includes("video")) {
-                                    await sock.sendMessage(from, { video: { url: mediaUrl }, caption: finalCaption }, { quoted: msg });
-                                } else {
-                                    await sock.sendMessage(from, { image: { url: mediaUrl }, caption: finalCaption }, { quoted: msg });
-                                }
-                            } catch (err) { }
-                        }
-                        await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
-                    });
                 } catch (e) {
-                    await sock.sendMessage(from, { text: "❌ Terjadi kesalahan sistem." }, { quoted: msg });
+                    console.error("IG Error:", e);
+                    await sock.sendMessage(from, { text: "❌ Gagal download. Mungkin akun diprivate atau cookies kedaluwarsa." }, { quoted: msg });
                 }
             }
 
@@ -7770,70 +7781,95 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
             }
 
 // =================================================
-            // FITUR LIRIK (ITUNES + LYRICS.OVH)
-            // ✅ API Resmi Apple (Search) + API Open Source (Lyrics)
+            // FITUR LIRIK (MANUAL SCRAPING - SCRIPT ABANG)
             // =================================================
             if (cmd === "!lirik" || cmd === "!lyrics") {
-                let input = teks.replace(/!lirik|lirik|!lyrics|lyrics/gi, "").trim();
+                const judul = teks.replace(/!lirik|lirik|!lyrics|lyrics/gi, "").trim();
+                
+                if (!judul) return sock.sendMessage(from, { text: "⚠️ Judulnya mana Bang?" }, { quoted: msg });
 
-                if (!input) {
-                    return sock.sendMessage(from, { text: "⚠️ Masukkan judul lagu!\nContoh: *!lirik Komang*" }, { quoted: msg });
-                }
-
-                console.log(`[LIRIK] Mencari Metadata di iTunes: ${input}`);
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
-                try {
-                    // 1. CARI JUDUL & ARTIS YANG BENAR VIA ITUNES API (Anti Blokir)
-                    const itunesRes = await axios.get(`https://itunes.apple.com/search?term=${encodeURIComponent(input)}&entity=song&limit=1`);
+                // --- FUNCTION SCRAPER MANUAL (Diadaptasi dari script Abang) ---
+                const scrapeLirikManual = async (query) => {
+                    const axios = require("axios");
+                    const cheerio = require("cheerio");
                     
-                    if (!itunesRes.data || itunesRes.data.resultCount === 0) {
-                         return sock.sendMessage(from, { text: `❌ Lagu *"${input}"* tidak ditemukan di iTunes.` }, { quoted: msg });
+                    try {
+                        // 1. KUNCI RAHASIA: Header User-Agent (Biar dikira Browser Chrome)
+                        // Tanpa ini, script Abang tadi pasti ditolak (403 Forbidden)
+                        const headers = {
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+                        };
+
+                        // 2. CARI LAGU DI MUSIXMATCH
+                        const searchUrl = "https://www.musixmatch.com/search/" + encodeURIComponent(query);
+                        const { data } = await axios.get(searchUrl, { headers });
+                        const $ = cheerio.load(data);
+                        
+                        // Cari link lagu pertama
+                        const linkPartial = $("div.media-card-body > div > h2").find("a").attr("href");
+                        
+                        if (!linkPartial) return null; // Lagu gak ketemu
+
+                        const fullLink = "https://www.musixmatch.com" + linkPartial;
+
+                        // 3. AMBIL HALAMAN LIRIK
+                        const { data: dataLirik } = await axios.get(fullLink, { headers });
+                        const $$ = cheerio.load(dataLirik);
+
+                        // 4. PARSE DATA (Sesuai script Abang + Perbaikan Selector)
+                        const hasil = {
+                            thumb: "https:" + $$("div.banner-album-image-desktop > img").attr("src"),
+                            judul: $$("h1").first().text().replace("Lyrics", "").trim(),
+                            artist: $$("h2").first().text().replace("Lyrics", "").trim(),
+                            lirik: ""
+                        };
+
+                        // Ambil teks lirik (Musixmatch sering memecah lirik jadi span banyak)
+                        // Selector 1 (Modern)
+                        $$(".mxm-lyrics__content").each((i, el) => {
+                            hasil.lirik += $$(el).text() + "\n";
+                        });
+
+                        // Selector 2 (Legacy - Sesuai script Abang) - Buat jaga-jaga
+                        if (!hasil.lirik.trim()) {
+                            $$("span > p > span").each((i, el) => {
+                                hasil.lirik += $$(el).text() + "\n";
+                            });
+                        }
+
+                        return hasil;
+                        
+                    } catch (e) {
+                        console.error("[Scraper] Error:", e.message);
+                        return null;
                     }
+                };
 
-                    const songData = itunesRes.data.results[0];
-                    const artist = songData.artistName;
-                    const title = songData.trackName;
-                    const cover = songData.artworkUrl100.replace('100x100', '600x600'); // Ambil cover HD
+                // --- EKSEKUSI ---
+                try {
+                    const result = await scrapeLirikManual(judul);
 
-                    console.log(`[LIRIK] Target: ${artist} - ${title}`);
-                    console.log(`[LIRIK] Mengambil teks dari Lyrics.ovh...`);
+                    if (result && result.lirik && result.lirik.trim().length > 10) {
+                        let caption = `*${result.judul}*\n`;
+                        caption += `*Artis:* ${result.artist}\n\n`;
+                        caption += `${result.lirik}\n\n`;
 
-                    // 2. AMBIL LIRIK DARI LYRICS.OVH
-                    // Format URL: https://api.lyrics.ovh/v1/NamaArtis/JudulLagu
-                    const lyricsRes = await axios.get(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`, {
-                        timeout: 10000 // 10 Detik
-                    });
-
-                    const lyrics = lyricsRes.data.lyrics;
-
-                    if (!lyrics) {
-                        return sock.sendMessage(from, { text: `❌ Musik ketemu (${title}), tapi teks lirik belum tersedia di database.` }, { quoted: msg });
+                        if (result.thumb && !result.thumb.includes("undefined")) {
+                            await sock.sendMessage(from, { image: { url: result.thumb }, caption: caption }, { quoted: msg });
+                        } else {
+                            await sock.sendMessage(from, { text: caption }, { quoted: msg });
+                        }
+                        
+                        await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+                    } else {
+                        await sock.sendMessage(from, { text: "❌ Lirik tidak ditemukan (Mungkin IP Server diblokir Musixmatch)." }, { quoted: msg });
                     }
-
-                    // 3. KIRIM HASIL
-                    let caption = `*${title}*\n`;
-                    caption += `*Artist:* ${artist}\n`;
-                    caption += `*Album:* ${songData.collectionName || '-'}\n`;
-                    caption += `──────────────────\n\n`;
-                    caption += `${lyrics}`;
-
-                    await sock.sendMessage(from, { 
-                        image: { url: cover },
-                        caption: caption
-                    }, { quoted: msg });
-
-                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
-                    console.error("[LIRIK] Error:", e.message);
-                    
-                    // Error handling khusus Lyrics.ovh
-                    if (e.response && e.response.status === 404) {
-                        await sock.sendMessage(from, { text: "❌ Lagu ditemukan di iTunes, tapi liriknya belum ada di database Lyrics.ovh." }, { quoted: msg });
-                    } else {
-                        await sock.sendMessage(from, { text: "❌ Terjadi kesalahan koneksi (Server Lirik Down)." }, { quoted: msg });
-                    }
+                    await sock.sendMessage(from, { text: "❌ Error sistem." }, { quoted: msg });
                 }
             }
 
