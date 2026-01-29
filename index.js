@@ -7674,67 +7674,101 @@ _Catatan: Metadata ini bisa diedit, tapi seringkali orang lupa menghapusnya._`;
             }
 
 // =================================================
-            // FITUR LIRIK (VIA LIBRARY GENIUS-LYRICS)
-            // ✅ WAJIB INSTALL: "genius-lyrics": "^4.4.0"
+            // FITUR LIRIK (AZLYRICS SCRAPER - OLD SCHOOL & KUAT)
             // =================================================
             if (cmd === "!lirik" || cmd === "!lyrics") {
                 let songName = teks.replace(/!lirik|lirik|!lyrics|lyrics/gi, "").trim();
 
                 if (!songName) {
-                    return sock.sendMessage(from, { text: "⚠️ Mau cari lagu apa Bang?\nContoh: *!lirik Komang*" }, { quoted: msg });
+                    return sock.sendMessage(from, { text: "⚠️ Masukkan judul lagu!\nContoh: *!lirik Komang*" }, { quoted: msg });
                 }
 
-                console.log(`[LIRIK] Mencari via Library: ${songName}`);
+                console.log(`[LIRIK] Mencari di AZLyrics: ${songName}`);
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
-                    // Panggil Library Genius
-                    const Genius = require("genius-lyrics");
-                    const Client = new Genius.Client(); // Gak perlu API Key, dia bisa mode gratis
+                    const cheerio = require("cheerio");
 
-                    // 1. Cari Lagu
-                    const searches = await Client.songs.search(songName);
+                    // 1. CARI LAGU DI AZLYRICS
+                    // Kita pakai header browser Chrome biar sopan
+                    const searchUrl = `https://search.azlyrics.com/search.php?q=${encodeURIComponent(songName)}&x=0&y=0`;
+                    
+                    const { data: searchData } = await axios.get(searchUrl, {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+                        }
+                    });
 
-                    // 2. Cek Hasil
-                    if (!searches || searches.length === 0) {
-                        return sock.sendMessage(from, { text: `❌ Lagu *"${songName}"* tidak ditemukan.` }, { quoted: msg });
+                    const $ = cheerio.load(searchData);
+
+                    // Ambil link lagu pertama dari hasil pencarian
+                    // AZLyrics naruh hasil di tabel
+                    let link = "";
+                    let titleFound = "";
+                    
+                    // Kita cari link yang ada di dalam tabel hasil
+                    $("td.text-left a").each((i, el) => {
+                        if (!link && $(el).attr("href") && !$(el).attr("href").includes("search.php")) {
+                            link = $(el).attr("href");
+                            titleFound = $(el).text().trim();
+                        }
+                    });
+
+                    if (!link) {
+                        return sock.sendMessage(from, { text: `❌ Lagu *"${songName}"* tidak ditemukan di AZLyrics.` }, { quoted: msg });
                     }
 
-                    // Ambil hasil paling atas (paling relevan)
-                    const firstSong = searches[0];
+                    console.log(`[LIRIK] Scraping URL: ${link}`);
 
-                    console.log(`[LIRIK] Menemukan: ${firstSong.title} - ${firstSong.artist.name}`);
+                    // 2. AMBIL ISI LIRIK
+                    const { data: lyricData } = await axios.get(link, {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+                        }
+                    });
 
-                    // 3. Ambil Liriknya (Library yang urus scrapingnya)
-                    const lyrics = await firstSong.lyrics();
+                    const $$ = cheerio.load(lyricData);
+
+                    // Judul Lagu & Artis
+                    const songTitle = $$("div.ringtone").next().text().replace(/"/g, "").replace(" lyrics", "").trim() || titleFound;
+                    const artist = $$("div.lyricsh").text().replace(" Lyrics", "").trim() || "Unknown Artist";
+
+                    // Ambil Lirik
+                    // Lirik di AZLyrics ada di div setelah div.ringtone, tapi agak tricky
+                    // Biasanya dia adalah div yang tidak punya class di tengah halaman
+                    let lyrics = "";
+                    
+                    $$("div").each((i, el) => {
+                        // Ciri khas AZLyrics: Lirik ada di antara komentar HTML ini
+                        const content = $$(el).html();
+                        if (content && content.includes("")) {
+                             lyrics = $$(el).text().trim();
+                        }
+                    });
 
                     if (!lyrics) {
-                         return sock.sendMessage(from, { text: "❌ Lirik tidak tersedia untuk lagu ini." }, { quoted: msg });
+                        // Fallback cara kasar kalau cara halus gagal
+                        lyrics = $$(".ringtone").nextAll("div").first().text().trim();
                     }
 
-                    // 4. Susun Pesan
-                    let caption = `*${firstSong.title}*\n`;
-                    caption += `*Artist:* ${firstSong.artist.name}\n`;
+                    if (!lyrics) {
+                         return sock.sendMessage(from, { text: "❌ Lirik tidak bisa dibaca (Struktur web aneh)." }, { quoted: msg });
+                    }
+
+                    // 3. KIRIM HASIL
+                    let caption = `*${songTitle}*\n`;
+                    caption += `*Artist:* ${artist}\n`;
+                    caption += `*Source:* AZLyrics\n`;
                     caption += `──────────────────\n\n`;
                     caption += `${lyrics}`;
 
-                    // 5. Kirim (Pakai Gambar dari Library)
-                    await sock.sendMessage(from, { 
-                        image: { url: firstSong.image },
-                        caption: caption
-                    }, { quoted: msg });
-
+                    // Kirim Teks Saja (AZLyrics jarang punya gambar HD yang gampang diambil)
+                    await sock.sendMessage(from, { text: caption }, { quoted: msg });
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
                     console.error("[LIRIK] Error:", e.message);
-                    
-                    // Cek kalau user lupa install library
-                    if (e.code === 'MODULE_NOT_FOUND' || e.message.includes("genius-lyrics")) {
-                        await sock.sendMessage(from, { text: "⚠️ *ERROR SYSTEM*\nModul `genius-lyrics` belum terinstall!\n\nCek file package.json Abang." }, { quoted: msg });
-                    } else {
-                        await sock.sendMessage(from, { text: "❌ Gagal mengambil lirik. Coba judul yang lebih spesifik." }, { quoted: msg });
-                    }
+                    await sock.sendMessage(from, { text: "❌ Gagal mengambil lirik." }, { quoted: msg });
                 }
             }
 
