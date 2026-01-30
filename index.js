@@ -10692,55 +10692,58 @@ ${para}`
             }
 
 // =================================================
-            // FITUR SMEME (FIXED: NO DUPLICATE SEND)
+            // FITUR SMEME (FIX: GANTI SERVER UPLOAD KE TMPFILES)
             // =================================================
             if (cmd === "!smeme" || cmd === "!meme") {
-                // 1. Cek Input & Gambar
                 const args = teks.replace(/!smeme|smeme|!meme|meme|!stickmeme|stickmeme/gi, "").trim();
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
                 const isImage = msg.message.imageMessage;
 
                 if (!args || (!isQuotedImage && !isImage)) {
-                    return sock.sendMessage(from, { text: `⚠️ Format salah!\nKirim/Reply gambar dengan caption:\n*!smeme Teks Atas|Teks Bawah*` }, { quoted: msg });
+                    return sock.sendMessage(from, { text: `⚠️ Kirim/Reply gambar dengan caption:\n*!smeme Teks Atas|Teks Bawah*` }, { quoted: msg });
                 }
 
-                await sock.sendMessage(from, { react: { text: "🚀", key: msg.key } });
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
-                    // Import Library
                     const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
                     const FormData = require("form-data");
                     const axios = require("axios");
                     const { Sticker } = require("wa-sticker-formatter");
 
-                    // 2. Download Media jadi Buffer
+                    // 1. Download Gambar jadi Buffer
                     let mediaStream = await downloadContentFromMessage(isQuotedImage || isImage, 'image');
                     let buffer = Buffer.from([]);
                     for await (const chunk of mediaStream) {
                         buffer = Buffer.concat([buffer, chunk]);
                     }
 
-                    // 3. Upload File ke Catbox
+                    // 2. Upload ke Tmpfiles (PENGGANTI CATBOX) 🔄
+                    // Catbox sering ngeblokir Memegen, jadi kita ganti Tmpfiles
                     const bodyForm = new FormData();
-                    bodyForm.append("reqtype", "fileupload");
-                    bodyForm.append("fileToUpload", buffer, "image.jpg");
+                    bodyForm.append("file", buffer, "image.jpg");
 
-                    const uploadRes = await axios.post("https://catbox.moe/user/api.php", bodyForm, {
+                    const uploadRes = await axios.post("https://tmpfiles.org/api/v1/upload", bodyForm, {
                         headers: { ...bodyForm.getHeaders() }
                     });
-                    const urlGambar = uploadRes.data.trim(); 
 
-                    // 4. Bikin URL Meme
+                    // Trik Penting: Tmpfiles ngasih URL view, kita ubah jadi URL download (/dl/)
+                    // Biar Memegen bisa baca gambarnya langsung
+                    const rawUrl = uploadRes.data.data.url.replace("https://tmpfiles.org/", "https://tmpfiles.org/dl/");
+                    console.log(`[Smeme] URL Gambar: ${rawUrl}`);
+
+                    // 3. Rakit URL Meme
                     let [atas, bawah] = args.split("|");
                     if (!bawah) { bawah = atas; atas = " "; } 
 
                     const safeAtas = encodeURIComponent(atas.trim()).replace(/%20/g, "_");
                     const safeBawah = encodeURIComponent(bawah.trim()).replace(/%20/g, "_");
 
-                    const memeUrl = `https://api.memegen.link/images/custom/${safeAtas}/${safeBawah}.png?background=${urlGambar}`;
-                    console.log(`[Smeme] Link: ${memeUrl}`);
+                    // Masukkan URL Tmpfiles tadi ke background
+                    const memeUrl = `https://api.memegen.link/images/custom/${safeAtas}/${safeBawah}.png?background=${rawUrl}`;
+                    console.log(`[Smeme] Link Final: ${memeUrl}`);
 
-                    // 5. Download Hasil Meme (Bypass Error 415)
+                    // 4. Download Hasil Meme (Tetap pake bypass 415)
                     const getMeme = await axios.get(memeUrl, { 
                         responseType: 'arraybuffer',
                         headers: { 
@@ -10749,9 +10752,8 @@ ${para}`
                         validateStatus: () => true 
                     });
 
-                    // 6. Buat Stiker & Kirim
+                    // 5. Buat Stiker & Kirim
                     if (getMeme.data && Buffer.isBuffer(getMeme.data)) {
-                        
                         const sticker = new Sticker(getMeme.data, {
                             pack: "BangBot Meme", 
                             author: "Bangbot", 
@@ -10761,12 +10763,9 @@ ${para}`
 
                         await sock.sendMessage(from, await sticker.toMessage(), { quoted: msg });
                         await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
-
                     } else {
                         throw new Error(`Gagal download meme. Status: ${getMeme.status}`);
                     }
-
-                    // (SISA KODINGAN LAMA DI SINI SUDAH SAYA HAPUS BIAR GAK ERROR)
 
                 } catch (e) {
                     console.error("[Smeme] Error:", e);
