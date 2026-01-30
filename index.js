@@ -10645,7 +10645,7 @@ ${para}`
             }
 
 // =================================================
-            // FITUR SMEME (FINAL: UPLOAD VIA QU.AX)
+            // FITUR SMEME (VERSION: JIMP LOCAL - ANTI ABU-ABU)
             // =================================================
             if (cmd === "!smeme" || cmd === "!meme") {
                 const args = teks.replace(/!smeme|smeme|!meme|meme|!stickmeme|stickmeme/gi, "").trim();
@@ -10653,15 +10653,14 @@ ${para}`
                 const isImage = msg.message.imageMessage;
 
                 if (!args || (!isQuotedImage && !isImage)) {
-                    return sock.sendMessage(from, { text: `⚠️ Kirim/Reply gambar dengan caption:\n*!smeme Teks Atas|Teks Bawah*` }, { quoted: msg });
+                    return sock.sendMessage(from, { text: `⚠️ Kirim/Reply gambar dengan caption:\n*!meme Teks Atas|Teks Bawah*` }, { quoted: msg });
                 }
 
-                await sock.sendMessage(from, { react: { text: "🚀", key: msg.key } });
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
                     const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
-                    const FormData = require("form-data");
-                    const axios = require("axios");
+                    const Jimp = require("jimp"); // Wajib npm install jimp
                     const { Sticker } = require("wa-sticker-formatter");
 
                     // 1. Download Gambar jadi Buffer
@@ -10671,62 +10670,67 @@ ${para}`
                         buffer = Buffer.concat([buffer, chunk]);
                     }
 
-                    // 2. Upload ke Qu.ax (Server Paling Meta/Stabil) 🔄
-                    const bodyForm = new FormData();
-                    bodyForm.append("files[]", buffer, "image.jpg"); // Field-nya files[]
-
-                    const uploadRes = await axios.post("https://qu.ax/upload.php", bodyForm, {
-                        headers: { 
-                            ...bodyForm.getHeaders(),
-                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
-                        }
-                    });
-
-                    // Cek hasil upload
-                    if (!uploadRes.data || !uploadRes.data.success || !uploadRes.data.files[0]) {
-                        throw new Error("Gagal upload ke Qu.ax");
+                    // 2. Baca Gambar pake JIMP
+                    const image = await Jimp.read(buffer);
+                    
+                    // Resize biar gak keberatan (Max lebar 800px)
+                    if (image.bitmap.width > 800) {
+                        image.resize(800, Jimp.AUTO);
                     }
 
-                    const urlGambar = uploadRes.data.files[0].url;
-                    console.log(`[Smeme] URL Sumber: ${urlGambar}`);
+                    // 3. Load Font Meme (Bawaan JIMP)
+                    const font = await Jimp.loadFont(Jimp.FONT_SANS_64_WHITE);
+                    const { width, height } = image.bitmap;
 
-                    // 3. Rakit URL Meme
                     let [atas, bawah] = args.split("|");
-                    if (!bawah) { bawah = atas; atas = " "; } 
+                    if (!bawah) { bawah = atas; atas = ""; }
 
-                    const safeAtas = encodeURIComponent(atas.trim()).replace(/%20/g, "_");
-                    const safeBawah = encodeURIComponent(bawah.trim()).replace(/%20/g, "_");
+                    // Tulis Teks Atas
+                    if (atas) {
+                        image.print(
+                            font, 
+                            0, 10, // Posisi X, Y
+                            {
+                                text: atas.toUpperCase(),
+                                alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER,
+                                alignmentY: Jimp.VERTICAL_ALIGN_TOP
+                            }, 
+                            width, height
+                        );
+                    }
 
-                    const memeUrl = `https://api.memegen.link/images/custom/${safeAtas}/${safeBawah}.png?background=${urlGambar}`;
-                    console.log(`[Smeme] Link Final: ${memeUrl}`);
+                    // Tulis Teks Bawah
+                    if (bawah) {
+                        const textHeight = Jimp.measureTextHeight(font, bawah.toUpperCase(), width);
+                        image.print(
+                            font, 
+                            0, height - textHeight - 20, // Posisi Y di bawah
+                            {
+                                text: bawah.toUpperCase(),
+                                alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER,
+                                alignmentY: Jimp.VERTICAL_ALIGN_BOTTOM
+                            }, 
+                            width, height
+                        );
+                    }
 
-                    // 4. Download Hasil Meme (Tetap pake bypass 415)
-                    const getMeme = await axios.get(memeUrl, { 
-                        responseType: 'arraybuffer',
-                        headers: { 
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36' 
-                        },
-                        validateStatus: () => true 
+                    // 4. Jadikan Buffer Lagi
+                    const hasilBuffer = await image.getBufferAsync(Jimp.MIME_JPEG);
+
+                    // 5. Buat Stiker
+                    const sticker = new Sticker(hasilBuffer, {
+                        pack: "BangBot Meme", 
+                        author: "Bangbot", 
+                        type: "full",
+                        quality: 60 
                     });
 
-                    // 5. Buat Stiker & Kirim
-                    if (getMeme.data && Buffer.isBuffer(getMeme.data)) {
-                        const sticker = new Sticker(getMeme.data, {
-                            pack: "BangBot Meme", 
-                            author: "Bangbot", 
-                            type: "full",
-                            quality: 50 
-                        });
-
-                        await sock.sendMessage(from, await sticker.toMessage(), { quoted: msg });
-                        await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
-                    } else {
-                        throw new Error(`Gagal download meme. Status: ${getMeme.status}`);
-                    }
+                    await sock.sendMessage(from, await sticker.toMessage(), { quoted: msg });
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                 } catch (e) {
                     console.error("[Smeme] Error:", e);
-                    sock.sendMessage(from, { text: "❌ Gagal membuat meme (Server Upload Error)." }, { quoted: msg });
+                    sock.sendMessage(from, { text: "❌ Gagal mengedit gambar (Coba gambar yang lebih kecil)." }, { quoted: msg });
                 }
             }
  
