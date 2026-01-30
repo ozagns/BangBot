@@ -10692,27 +10692,29 @@ ${para}`
             }
 
 // =================================================
-            // FITUR SMEME (CATBOX VERSION - FIXED)
+            // FITUR SMEME (FIXED BUFFER & BRACKETS)
             // =================================================
             if (cmd === "!smeme" || cmd === "!meme") {
-                const args = teks.replace(/!smeme|smeme|!meme|stickmeme|!smm|smm/gi, "").trim();
+                const args = teks.replace(/!smeme|smeme|!stickmeme|stickmeme|!smm|smm/gi, "").trim();
                 
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
                 const isImage = msg.message.imageMessage;
                 
+                // Cek input
                 if (!args || (!isQuotedImage && !isImage)) {
                     return sock.sendMessage(from, { text: `⚠️ Kirim/Reply gambar dengan caption:\n*!smeme Teks Atas|Teks Bawah*` }, { quoted: msg });
                 }
 
-                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+                await sock.sendMessage(from, { react: { text: "⏳", key: msg.key } });
 
                 try {
+                    // Import manual di dalam biar aman
                     const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
                     const FormData = require("form-data");
                     const axios = require("axios");
                     const { Sticker } = require("wa-sticker-formatter"); 
 
-                    // 1. Download Gambar dari Chat
+                    // 1. Download Gambar jadi Buffer
                     let mediaStream = await downloadContentFromMessage(isQuotedImage || isImage, 'image');
                     let buffer = Buffer.from([]);
                     for await (const chunk of mediaStream) {
@@ -10724,7 +10726,6 @@ ${para}`
                     bodyForm.append("reqtype", "fileupload");
                     bodyForm.append("fileToUpload", buffer, "image.jpg");
 
-                    // Header form-data harus lengkap
                     const uploadRes = await axios.post("https://catbox.moe/user/api.php", bodyForm, {
                         headers: { ...bodyForm.getHeaders() }
                     });
@@ -10740,21 +10741,19 @@ ${para}`
                     const safeBawah = encodeURIComponent(bawah.trim() || "_").replace(/%20/g, "_");
 
                     const memeUrl = `https://api.memegen.link/images/custom/${safeAtas}/${safeBawah}.png?background=${imageUrl}`;
-                    console.log(`[Smeme] Link Meme: ${memeUrl}`);
 
-                    // 4. DOWNLOAD MANUAL MEME-NYA (Bypass Error 415)
-                    // Kita ambil gambarnya jadi buffer dulu
+                    // 4. DOWNLOAD MANUAL (Bypass Error 415)
                     const getMeme = await axios.get(memeUrl, { 
                         responseType: 'arraybuffer',
                         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36' }
                     });
 
-                    // 5. Buat Stiker dari BUFFER (Bukan dari URL)
+                    // 5. Buat Stiker dari Buffer
                     const sticker = new Sticker(getMeme.data, {
                         pack: "BangBot Meme", 
-                        author: "Bangbot", 
+                        author: "Ozagns", 
                         type: "full",
-                        quality: 60 
+                        quality: 50 
                     });
 
                     await sock.sendMessage(from, await sticker.toMessage(), { quoted: msg });
@@ -10762,8 +10761,9 @@ ${para}`
 
                 } catch (e) {
                     console.error("[Smeme] Error:", e);
-                    sock.sendMessage(from, { text: "❌ Gagal membuat meme (Server Error)." }, { quoted: msg });
+                    sock.sendMessage(from, { text: "❌ Gagal membuat meme." }, { quoted: msg });
                 }
+            } // <--- Pastikan cuma ada SATU kurung ini di akhir blok smeme
  
             // =================================================
             // SPEEDTEST (pakai python -m speedtest --simple)
