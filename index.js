@@ -3963,7 +3963,7 @@ _Berikut pesan/media yang dihapus:_`;
 `*IMAGE TOOLS*
 • !removebg → hapus background foto
 • !compress → kompres foto/video
-• !cartoon → efek kartun offline
+• !cartoon → efek kartun
 • !restoreface → perbaiki wajah blur
 • !resize 1000 → ubah lebar gambar (px)
 • !hd → perbesar resolusi gambar 2x
@@ -10655,7 +10655,7 @@ ${para}`
                     return sock.sendMessage(from, { text: `⚠️ Kirim/Reply gambar dengan caption:\n*!meme Teks Atas|Teks Bawah*` }, { quoted: msg });
                 }
 
-                await sock.sendMessage(from, { react: { text: "🎨", key: msg.key } });
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
                     const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
@@ -10735,7 +10735,69 @@ ${para}`
                     sock.sendMessage(from, { text: "❌ Gagal membuat meme." }, { quoted: msg });
                 }
             }
- 
+
+// =================================================
+            // FITUR STICKER / CARTOON (Murni Gambar HD)
+            // =================================================
+            if (cmd === "!cartoon" || cmd === "!tocartoon") {
+                const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
+                const isImage = msg.message.imageMessage;
+
+                if (!isQuotedImage && !isImage) {
+                    return sock.sendMessage(from, { text: `⚠️ Kirim/Reply gambar dengan caption *${cmd}*` }, { quoted: msg });
+                }
+
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+
+                try {
+                    const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
+                    const { createCanvas, loadImage } = require('@napi-rs/canvas');
+                    const { Sticker } = require("wa-sticker-formatter");
+
+                    // 1. Download Gambar
+                    let mediaStream = await downloadContentFromMessage(isQuotedImage || isImage, 'image');
+                    let buffer = Buffer.from([]);
+                    for await (const chunk of mediaStream) {
+                        buffer = Buffer.concat([buffer, chunk]);
+                    }
+
+                    // 2. Proses di Canvas (Biar Konsisten & HD)
+                    const img = await loadImage(buffer);
+                    
+                    // Resize Otomatis (Max 800px biar ringan di WA tapi tetep tajam)
+                    let width = img.width;
+                    let height = img.height;
+                    const maxSize = 800;
+                    
+                    if (width > maxSize) {
+                        const scale = maxSize / width;
+                        width = maxSize;
+                        height = height * scale;
+                    }
+
+                    const canvas = createCanvas(width, height);
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // 3. Konversi ke Stiker (Tanpa Teks)
+                    const hasilBuffer = await canvas.encode('jpeg', { quality: 0.9 }); // Kualitas Gambar 90%
+                    
+                    const sticker = new Sticker(hasilBuffer, {
+                        pack: "BangBot cartoon", 
+                        author: "bangbot", 
+                        type: "full", // Gambarnya utuh (gak dicrop kotak)
+                        quality: 90   // Kualitas Stiker 90% (HD)
+                    });
+
+                    await sock.sendMessage(from, await sticker.toMessage(), { quoted: msg });
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+
+                } catch (e) {
+                    console.error("[Sticker] Error:", e);
+                    sock.sendMessage(from, { text: "❌ Gagal membuat stiker." }, { quoted: msg });
+                }
+            }
+
             // ================================================
             // SPEEDTEST (pakai python -m speedtest --simple)
             // =================================================
