@@ -10877,7 +10877,7 @@ Selesai Bang.`
             }
 
 // =================================================
-            // FITUR HD / REMINI (ENHANCE IMAGE)
+            // FITUR HD / REMINI (FIX: UGUU UPLOADER)
             // =================================================
             if (cmd === "!hd" || cmd === "!remini" || cmd === "!tohd") {
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
@@ -10894,36 +10894,33 @@ Selesai Bang.`
                     const axios = require("axios");
                     const FormData = require("form-data");
 
-                    // 1. Download Gambar dari WA
+                    // 1. Download Gambar
                     let mediaStream = await downloadContentFromMessage(isQuotedImage || isImage, 'image');
                     let buffer = Buffer.from([]);
                     for await (const chunk of mediaStream) {
                         buffer = Buffer.concat([buffer, chunk]);
                     }
 
-                    // 2. Fungsi Upload ke Catbox (Biar dapet URL)
-                    const uploadToCatbox = async (fileBuffer) => {
+                    // 2. Fungsi Upload ke Uguu.se (GANTI CATBOX)
+                    const uploadToUguu = async (fileBuffer) => {
                         const form = new FormData();
-                        form.append("reqtype", "fileupload");
-                        form.append("fileToUpload", fileBuffer, "image.jpg");
+                        form.append("files[]", fileBuffer, "image.jpg");
                         
-                        const { data } = await axios.post("https://catbox.moe/user/api.php", form, {
+                        const { data } = await axios.post("https://uguu.se/upload.php?output=json", form, {
                             headers: { ...form.getHeaders() }
                         });
-                        return data; // Ini isinya URL gambar (contoh: https://files.catbox.moe/xyz.jpg)
+                        return data.files[0].url; // Ambil URL hasil upload
                     };
 
                     // 3. Proses Upload
-                    const imgUrl = await uploadToCatbox(buffer);
-                    console.log("Uploaded to Catbox:", imgUrl);
+                    const imgUrl = await uploadToUguu(buffer);
+                    console.log("Uploaded to Uguu:", imgUrl);
 
-                    // 4. Panggil API HD (Deline)
+                    // 4. Panggil API HD
                     const apiUrl = `https://api.deline.web.id/tools/hd?url=${imgUrl}`;
-                    
-                    // Kita ambil gambarnya langsung sebagai buffer
                     const response = await axios.get(apiUrl, { responseType: 'arraybuffer' });
 
-                    // 5. Kirim Hasilnya
+                    // 5. Kirim Hasil
                     await sock.sendMessage(from, { 
                         image: response.data, 
                         caption: "" 
@@ -10933,7 +10930,12 @@ Selesai Bang.`
 
                 } catch (e) {
                     console.error("[HD] Error:", e);
-                    sock.sendMessage(from, { text: "❌ Gagal memproses HD. API mungkin sedang down." }, { quoted: msg });
+                    // Cek error spesifik
+                    if (e.code === 'ETIMEDOUT') {
+                        sock.sendMessage(from, { text: "❌ Server upload timeout. Coba lagi nanti." }, { quoted: msg });
+                    } else {
+                        sock.sendMessage(from, { text: "❌ Gagal memproses HD." }, { quoted: msg });
+                    }
                 }
             }
 
