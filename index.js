@@ -6181,53 +6181,6 @@ _Note: Ini cuma ramalan/arti kata, jangan baper ya Bang!_`;
                 }
             }
 
-// =================================================
-            // FITUR HD / REMINI (SERVER: AGATZ)
-            // =================================================
-            if (cmd === "!hd" || cmd === "!remini") {
-                const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
-                const isImage = msg.message.imageMessage;
-
-                if (!isQuotedImage && !isImage) {
-                    return sock.sendMessage(from, { text: "⚠️ Kirim/Reply foto burik dengan caption *!hd*" }, { quoted: msg });
-                }
-
-                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
-
-                try {
-                    // 1. Download & Upload
-                    let mediaBuffer;
-                    if (isQuotedImage) {
-                        mediaBuffer = await downloadMediaMessage(
-                            { message: msg.message.extendedTextMessage.contextInfo.quotedMessage }, 'buffer', {}
-                        );
-                    } else {
-                        mediaBuffer = await downloadMediaMessage(msg, 'buffer', {});
-                    }
-                    
-                    const imageUrl = await uploadToCatbox(mediaBuffer);
-
-                    // 2. Request ke Agatz
-                    // API ini mengembalikan JSON berisi URL hasil
-                    const { data } = await axios.get(`https://api.agatz.xyz/api/remini?url=${imageUrl}`);
-
-                    if (!data || !data.data || !data.data.url) {
-                        throw new Error("Respon API kosong");
-                    }
-
-                    // 3. Kirim Hasil
-                    await sock.sendMessage(from, { 
-                        image: { url: data.data.url }, 
-                        caption: "" 
-                    }, { quoted: msg });
-
-                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
-
-                } catch (e) {
-                    console.error("HD Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Server HD lagi sibuk Bang, coba beberapa saat lagi." }, { quoted: msg });
-                }
-            }
 
 // =================================================
             // FITUR ALARM (SUPPORT WIB, WITA, WIT)
@@ -10692,7 +10645,7 @@ ${para}`
             }
 
 // =================================================
-            // FITUR SMEME (FIX: TELEGRA.PH UPLOADER)
+            // FITUR SMEME (FINAL: UPLOAD VIA QU.AX)
             // =================================================
             if (cmd === "!smeme" || cmd === "!meme") {
                 const args = teks.replace(/!smeme|smeme|!meme|meme|!stickmeme|stickmeme/gi, "").trim();
@@ -10718,20 +10671,23 @@ ${para}`
                         buffer = Buffer.concat([buffer, chunk]);
                     }
 
-                    // 2. Upload ke Telegra.ph (Server Telegram - Lebih Stabil) 🔄
+                    // 2. Upload ke Qu.ax (Server Paling Meta/Stabil) 🔄
                     const bodyForm = new FormData();
-                    bodyForm.append("file", buffer, "image.jpg");
+                    bodyForm.append("files[]", buffer, "image.jpg"); // Field-nya files[]
 
-                    const uploadRes = await axios.post("https://telegra.ph/upload", bodyForm, {
-                        headers: { ...bodyForm.getHeaders() }
+                    const uploadRes = await axios.post("https://qu.ax/upload.php", bodyForm, {
+                        headers: { 
+                            ...bodyForm.getHeaders(),
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
+                        }
                     });
 
-                    // Cek response telegra.ph
-                    if (!uploadRes.data || !uploadRes.data[0] || !uploadRes.data[0].src) {
-                        throw new Error("Gagal upload ke Telegra.ph");
+                    // Cek hasil upload
+                    if (!uploadRes.data || !uploadRes.data.success || !uploadRes.data.files[0]) {
+                        throw new Error("Gagal upload ke Qu.ax");
                     }
 
-                    const urlGambar = "https://telegra.ph" + uploadRes.data[0].src;
+                    const urlGambar = uploadRes.data.files[0].url;
                     console.log(`[Smeme] URL Sumber: ${urlGambar}`);
 
                     // 3. Rakit URL Meme
@@ -10770,7 +10726,7 @@ ${para}`
 
                 } catch (e) {
                     console.error("[Smeme] Error:", e);
-                    sock.sendMessage(from, { text: "❌ Gagal membuat meme (Server Error)." }, { quoted: msg });
+                    sock.sendMessage(from, { text: "❌ Gagal membuat meme (Server Upload Error)." }, { quoted: msg });
                 }
             }
  
@@ -10846,7 +10802,7 @@ Selesai Bang.`
                         document: { url: res.data.url }, 
                         mimetype: "image/png",
                         fileName: "removebg-bangbot.png",
-                        caption: "✨ *BACKGROUND TERHAPUS*" 
+                        caption: "" 
                     }, { quoted: msg });
 
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
