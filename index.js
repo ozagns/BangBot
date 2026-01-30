@@ -188,8 +188,6 @@ async function handleOfficeToPdf(sock, from, msg, mediaMsg, fileNameHint) {
 const axios = require('axios');
 const cheerio = require('cheerio');
 const { PDFDocument } = require("pdf-lib");
-const JimpPkg = require("jimp");
-const Jimp = JimpPkg.Jimp || JimpPkg; // kompatibel Jimp lama & baru
 const QrCodeReader = require('qrcode-reader');
 
 // --- MAP PENYIMPAN SESI BALASAN ---
@@ -1901,9 +1899,6 @@ function getSmartEmojiReaction(text) {
 // QR DECODER
 // =================================================================
 async function decodeQrFromBuffer(buffer) {
-  // Loader Jimp kompatibel
-  const JimpPkg = require("jimp");
-  const Jimp = JimpPkg.Jimp || JimpPkg;
 
   const img = await (Jimp.read ? Jimp.read(buffer) : JimpPkg.read(buffer));
 
