@@ -4186,7 +4186,7 @@ _Berikut pesan/media yang dihapus:_`;
             if (cmd === "!menudonate") {
                 const donateMsg =
 `**DONATE
-• !saweria → traktir BangBot ([https://saweria.co/ozagns](https://saweria.co/ozagns))`;
+• !saweria → traktir BangBot (https://saweria.co/ozagns)`;
 
                 await sock.sendMessage(from, { text: donateMsg }, { quoted: msg });
             }
@@ -8867,7 +8867,7 @@ Gunakan format: *[angka] [satuan_asal] to [satuan_tujuan]*
                     await sock.sendMessage(from, {
                         text:
             "Format: !qrwifi ssid|password|Tipe\n" +
-            "Contoh: !qrwifi RumahOzzy|rahasia123|WPA\n" +
+            "Contoh: !qrwifi Rumahagus|rahasia123|WPA\n" +
             "Tipe: WEP / WPA / WPA2 (default: WPA)."
                     });
                     return;
@@ -10691,104 +10691,82 @@ ${para}`
                 return;
             }
 
-                        // =================================================
-            // MEME GENERATOR — !meme atas|bawah (reply foto atau caption di foto)
+// =================================================
+            // FITUR SMEME (STICKER MEME)
             // =================================================
-            if (cmd === "!meme") {
-                // Ambil teks setelah !meme
-                const raw = teks.replace(/!meme/i, "").trim();
-
-                if (!raw || !raw.includes("|")) {
-                    await sock.sendMessage(from, {
-                        text:
-`Format: *!meme teks_atas|teks_bawah*
-
-Contoh:
-*!meme AKU CAPEK|TAPI TETEP NGODING*
-
-Bisa dipakai dengan:
-1) Reply ke foto lalu ketik: *!meme atas|bawah*
-2) Kirim foto + caption: *!meme atas|bawah*`
-                    });
-                    return;
+            if (cmd === "!smeme" || cmd === "!meme") {
+                const args = teks.replace(/!smeme|smeme|!stickmeme|stickmeme|!smm|smm/gi, "").trim();
+                
+                // Cek apakah user ngirim gambar atau reply gambar
+                const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
+                const isImage = msg.message.imageMessage;
+                const quoted = msg.quoted ? msg.quoted : msg;
+                
+                if (!args || (!isQuotedImage && !isImage)) {
+                    return sock.sendMessage(from, { text: `⚠️ Kirim/Reply gambar dengan caption:\n*!smeme Teks Atas|Teks Bawah*\n\nContoh: *!smeme Pinjam Dulu|Seratus*` }, { quoted: msg });
                 }
 
-                const parts = raw.split("|");
-                const topRaw = (parts[0] || "").trim();
-                const bottomRaw = (parts[1] || "").trim();
-
-                const topText = topRaw.toUpperCase();
-                const bottomText = bottomRaw.toUpperCase();
-
-                // Cari sumber gambar
-                let imgMsg = null;
-
-                // 1) Kalau reply ke foto
-                const ctx = msg.message?.extendedTextMessage?.contextInfo;
-                if (ctx?.quotedMessage?.imageMessage) {
-                    imgMsg = { message: ctx.quotedMessage };
-                }
-                // 2) Kalau pesan ini foto dengan caption !meme
-                else if (msg.message?.imageMessage) {
-                    imgMsg = msg;
-                }
-                // 3) Opsional: fallback ke gambar terakhir di chat (kalau kamu pakai LAST_QR_IMAGE untuk ini juga)
-                else if (LAST_QR_IMAGE[from]?.message?.imageMessage) {
-                    imgMsg = LAST_QR_IMAGE[from];
-                }
-
-                if (!imgMsg) {
-                    await sock.sendMessage(from, {
-                        text:
-"Kirim foto + caption *!meme atas|bawah* atau reply ke foto lalu ketik *!meme atas|bawah*, Bang."
-                    });
-                    return;
-                }
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
 
                 try {
-                    const buffer = await downloadMediaMessage(imgMsg, "buffer");
+                    const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
+                    const FormData = require("form-data");
+                    const Sticker = require("wa-sticker-formatter"); // Wajib install ini
 
-                    const ts = Date.now();
-                    const inPath = `./meme_in_${ts}.jpg`;
-                    const outPath = `./meme_out_${ts}.jpg`;
+                    // 1. DOWNLOAD GAMBAR 📥
+                    let mediaStream, mimeType;
+                    if (isQuotedImage) {
+                        mediaStream = await downloadContentFromMessage(isQuotedImage, 'image');
+                        mimeType = 'image/jpeg';
+                    } else {
+                        mediaStream = await downloadContentFromMessage(isImage, 'image');
+                        mimeType = 'image/jpeg';
+                    }
 
-                    fs.writeFileSync(inPath, buffer);
+                    let buffer = Buffer.from([]);
+                    for await (const chunk of mediaStream) {
+                        buffer = Buffer.concat([buffer, chunk]);
+                    }
 
-                    // Escape double quote agar aman di command
-                    const escTop = topText.replace(/"/g, '\\"');
-                    const escBottom = bottomText.replace(/"/g, '\\"');
+                    // 2. UPLOAD KE CATBOX (Biar dapet URL Publik) 🌐
+                    // DinzAPI sering down, kita pake Catbox.moe yang lebih kuat
+                    const bodyForm = new FormData();
+                    bodyForm.append("reqtype", "fileupload");
+                    bodyForm.append("fileToUpload", buffer, "image.jpg");
 
-                    // NOTE:
-                    // - Pastikan font "Impact" terinstal di Windows
-                    //   Kalau tidak ada, bisa ganti dengan 'Arial-Black' atau font lain.
-                    const cmdMeme =
-                        `magick "${inPath}" ` +
-                        `-resize 800x800^ -gravity center -extent 800x800 ` +
-                        `-font Impact -stroke black -strokewidth 4 -fill white -pointsize 64 ` +
-                        `-gravity north -annotate +0+40 "${escTop}" ` +
-                        `-gravity south -annotate +0+40 "${escBottom}" ` +
-                        `"${outPath}"`;
-
-                    await execAsync(cmdMeme);
-
-                    const outBuf = fs.readFileSync(outPath);
-
-                    await sock.sendMessage(from, {
-                        image: outBuf,
-                        caption: "Ini memenya, Bang."
+                    const uploadRes = await axios.post("https://catbox.moe/user/api.php", bodyForm, {
+                        headers: { ...bodyForm.getHeaders() }
                     });
 
-                    if (fs.existsSync(inPath)) fs.unlinkSync(inPath);
-                    if (fs.existsSync(outPath)) fs.unlinkSync(outPath);
+                    const imageUrl = uploadRes.data.trim();
+                    console.log(`[Smeme] Upload sukses: ${imageUrl}`);
 
-                } catch (err) {
-                    console.error("Meme generator error:", err);
-                    await sock.sendMessage(from, {
-                        text: "Gagal bikin meme, Bang. Cek apakah ImageMagick & font Impact sudah terpasang."
+                    // 3. RAKIT URL MEME (API Memegen) 🎨
+                    let [atas, bawah] = args.split("|");
+                    // Default text kalau kosong
+                    if (!bawah) { bawah = atas; atas = " "; } 
+                    
+                    // Bersihin teks dari karakter aneh biar URL valid
+                    const safeAtas = encodeURIComponent(atas.trim() || "_").replace(/%20/g, "_");
+                    const safeBawah = encodeURIComponent(bawah.trim() || "_").replace(/%20/g, "_");
+
+                    const memeUrl = `https://api.memegen.link/images/custom/${safeAtas}/${safeBawah}.png?background=${imageUrl}`;
+
+                    // 4. KONVERSI JADI STICKER & KIRIM 📦
+                    const sticker = new Sticker(memeUrl, {
+                        pack: "Meme", // Ganti nama pack sesuka hati
+                        author: "Bangbot", // Ganti nama author
+                        type: "full", // Tipe: full, crop, circle
+                        quality: 70
                     });
+
+                    await sock.sendMessage(from, await sticker.toMessage(), { quoted: msg });
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+
+                } catch (e) {
+                    console.error("[Smeme] Error:", e);
+                    sock.sendMessage(from, { text: "❌ Gagal membuat meme. Pastikan gambar tidak terlalu besar." }, { quoted: msg });
                 }
-
-                return;
             }
 
             // =================================================
