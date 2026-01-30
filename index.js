@@ -10742,19 +10742,32 @@ ${para}`
                     const memeUrl = `https://api.memegen.link/images/custom/${safeAtas}/${safeBawah}.png?background=${urlGambar}`;
                     console.log(`[Smeme] Link: ${memeUrl}`);
 
-                    // 5. Download Hasil Meme & Jadiin Stiker
-                    // Kita download dulu buffernya biar gak error 415 kayak tadi
+        // 5. Download Hasil Meme (MODIFIKASI ANTI-ERROR 415)
                     const getMeme = await axios.get(memeUrl, { 
                         responseType: 'arraybuffer',
-                        headers: { 'User-Agent': 'Mozilla/5.0' }
+                        headers: { 
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36' 
+                        },
+                        validateStatus: () => true // <--- INI KUNCINYA (Terima semua status)
                     });
 
-                    const sticker = new Sticker(getMeme.data, {
-                        pack: "BangBot Sticker", 
-                        author: "Meme", 
-                        type: "full", // Bisa ganti 'crop' atau 'circle'
-                        quality: 50 
-                    });
+                    // Cek apakah datanya benar-benar gambar (Buffer)
+                    if (getMeme.data && Buffer.isBuffer(getMeme.data)) {
+                        
+                        const sticker = new Sticker(getMeme.data, {
+                            pack: "BangBot Meme", 
+                            author: "Bangbot", 
+                            type: "full",
+                            quality: 50 
+                        });
+
+                        await sock.sendMessage(from, await sticker.toMessage(), { quoted: msg });
+                        await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+
+                    } else {
+                        // Kalau datanya rusak/kosong
+                        throw new Error(`Gagal download meme. Status: ${getMeme.status}`);
+                    }
 
                     await sock.sendMessage(from, await sticker.toMessage(), { quoted: msg });
                     await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
