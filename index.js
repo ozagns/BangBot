@@ -10710,10 +10710,9 @@ ${para}`
                     const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
                     const FormData = require("form-data");
                     const axios = require("axios");
-                    // 🔧 PERBAIKAN DI SINI: Pakai kurung kurawal { Sticker }
                     const { Sticker } = require("wa-sticker-formatter"); 
 
-                    // 1. Download Gambar
+                    // 1. Download Gambar dari Chat
                     let mediaStream = await downloadContentFromMessage(isQuotedImage || isImage, 'image');
                     let buffer = Buffer.from([]);
                     for await (const chunk of mediaStream) {
@@ -10725,6 +10724,7 @@ ${para}`
                     bodyForm.append("reqtype", "fileupload");
                     bodyForm.append("fileToUpload", buffer, "image.jpg");
 
+                    // Header form-data harus lengkap
                     const uploadRes = await axios.post("https://catbox.moe/user/api.php", bodyForm, {
                         headers: { ...bodyForm.getHeaders() }
                     });
@@ -10740,13 +10740,21 @@ ${para}`
                     const safeBawah = encodeURIComponent(bawah.trim() || "_").replace(/%20/g, "_");
 
                     const memeUrl = `https://api.memegen.link/images/custom/${safeAtas}/${safeBawah}.png?background=${imageUrl}`;
+                    console.log(`[Smeme] Link Meme: ${memeUrl}`);
 
-                    // 4. Buat Stiker (Sekarang harusnya aman)
-                    const sticker = new Sticker(memeUrl, {
+                    // 4. DOWNLOAD MANUAL MEME-NYA (Bypass Error 415)
+                    // Kita ambil gambarnya jadi buffer dulu
+                    const getMeme = await axios.get(memeUrl, { 
+                        responseType: 'arraybuffer',
+                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36' }
+                    });
+
+                    // 5. Buat Stiker dari BUFFER (Bukan dari URL)
+                    const sticker = new Sticker(getMeme.data, {
                         pack: "BangBot Meme", 
-                        author: "Ozagns", 
+                        author: "Bangbot", 
                         type: "full",
-                        quality: 50 
+                        quality: 60 
                     });
 
                     await sock.sendMessage(from, await sticker.toMessage(), { quoted: msg });
@@ -10754,9 +10762,8 @@ ${para}`
 
                 } catch (e) {
                     console.error("[Smeme] Error:", e);
-                    sock.sendMessage(from, { text: "❌ Gagal membuat meme." }, { quoted: msg });
+                    sock.sendMessage(from, { text: "❌ Gagal membuat meme (Server Error)." }, { quoted: msg });
                 }
-            }
 
             // =================================================
             // SPEEDTEST (pakai python -m speedtest --simple)
