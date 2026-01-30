@@ -10764,7 +10764,7 @@ ${para}`
                     console.error("[Smeme] Error:", e);
                     sock.sendMessage(from, { text: "❌ Gagal membuat meme (Server Error)." }, { quoted: msg });
                 }
-
+ 
             // =================================================
             // SPEEDTEST (pakai python -m speedtest --simple)
             // =================================================
