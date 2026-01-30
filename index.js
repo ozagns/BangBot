@@ -10692,7 +10692,7 @@ ${para}`
             }
 
 // =================================================
-            // FITUR SMEME (FIX: GANTI SERVER UPLOAD KE TMPFILES)
+            // FITUR SMEME (FIX: TELEGRA.PH UPLOADER)
             // =================================================
             if (cmd === "!smeme" || cmd === "!meme") {
                 const args = teks.replace(/!smeme|smeme|!meme|meme|!stickmeme|stickmeme/gi, "").trim();
@@ -10703,7 +10703,7 @@ ${para}`
                     return sock.sendMessage(from, { text: `⚠️ Kirim/Reply gambar dengan caption:\n*!smeme Teks Atas|Teks Bawah*` }, { quoted: msg });
                 }
 
-                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+                await sock.sendMessage(from, { react: { text: "🚀", key: msg.key } });
 
                 try {
                     const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
@@ -10718,19 +10718,21 @@ ${para}`
                         buffer = Buffer.concat([buffer, chunk]);
                     }
 
-                    // 2. Upload ke Tmpfiles (PENGGANTI CATBOX) 🔄
-                    // Catbox sering ngeblokir Memegen, jadi kita ganti Tmpfiles
+                    // 2. Upload ke Telegra.ph (Server Telegram - Lebih Stabil) 🔄
                     const bodyForm = new FormData();
                     bodyForm.append("file", buffer, "image.jpg");
 
-                    const uploadRes = await axios.post("https://tmpfiles.org/api/v1/upload", bodyForm, {
+                    const uploadRes = await axios.post("https://telegra.ph/upload", bodyForm, {
                         headers: { ...bodyForm.getHeaders() }
                     });
 
-                    // Trik Penting: Tmpfiles ngasih URL view, kita ubah jadi URL download (/dl/)
-                    // Biar Memegen bisa baca gambarnya langsung
-                    const rawUrl = uploadRes.data.data.url.replace("https://tmpfiles.org/", "https://tmpfiles.org/dl/");
-                    console.log(`[Smeme] URL Gambar: ${rawUrl}`);
+                    // Cek response telegra.ph
+                    if (!uploadRes.data || !uploadRes.data[0] || !uploadRes.data[0].src) {
+                        throw new Error("Gagal upload ke Telegra.ph");
+                    }
+
+                    const urlGambar = "https://telegra.ph" + uploadRes.data[0].src;
+                    console.log(`[Smeme] URL Sumber: ${urlGambar}`);
 
                     // 3. Rakit URL Meme
                     let [atas, bawah] = args.split("|");
@@ -10739,8 +10741,7 @@ ${para}`
                     const safeAtas = encodeURIComponent(atas.trim()).replace(/%20/g, "_");
                     const safeBawah = encodeURIComponent(bawah.trim()).replace(/%20/g, "_");
 
-                    // Masukkan URL Tmpfiles tadi ke background
-                    const memeUrl = `https://api.memegen.link/images/custom/${safeAtas}/${safeBawah}.png?background=${rawUrl}`;
+                    const memeUrl = `https://api.memegen.link/images/custom/${safeAtas}/${safeBawah}.png?background=${urlGambar}`;
                     console.log(`[Smeme] Link Final: ${memeUrl}`);
 
                     // 4. Download Hasil Meme (Tetap pake bypass 415)
@@ -10769,7 +10770,7 @@ ${para}`
 
                 } catch (e) {
                     console.error("[Smeme] Error:", e);
-                    sock.sendMessage(from, { text: "❌ Gagal membuat meme." }, { quoted: msg });
+                    sock.sendMessage(from, { text: "❌ Gagal membuat meme (Server Error)." }, { quoted: msg });
                 }
             }
  
@@ -10856,63 +10857,146 @@ Selesai Bang.`
                 }
             }
 
-// =================================================
-            // FITUR HD / REMINI (AI REPLICATE)
             // =================================================
-            if (cmd === "!hd" || cmd === "!remini" || cmd === "!perjelas") {
-                // Cek apakah ada gambar?
-                const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
-                const isImage = msg.message.imageMessage;
-                
-                if (!isQuotedImage && !isImage) {
-                    return sock.sendMessage(from, { text: "⚠️ Kirim/Reply foto burik dengan caption *!hd*" }, { quoted: msg });
-                }
+            // FITUR HD/ENHANCE WITH MULTIPLE API FALLBACK
+            // =================================================
+            if (["!hd", "!remini", "!enhance", "!tohd"].includes(cmd)) {
+                // Handler function
+                async function enhancePhoto() {
+                    try {
+                        // Validation
+                        if (!quoted) throw new Error("Reply foto dulu ya!");
+                        
+                        const mime = quoted.mimetype || "";
+                        if (!mime.includes("image")) throw new Error("Itu bukan foto!");
+                        
+                        // Send initial status
+                        await sock.sendMessage(from, { react: { text: "🔍", key: msg.key } });
+                        
+                        // Download photo
+                        const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
+                        const stream = await downloadContentFromMessage(quoted, 'image');
+                        
+                        let buffer = Buffer.from([]);
+                        for await (const chunk of stream) {
+                            buffer = Buffer.concat([buffer, chunk]);
+                        }
+                        
+                        // Upload to host
+                        const FormData = require("form-data");
+                        const axios = require("axios");
+                        
+                        const form = new FormData();
+                        form.append("fileToUpload", buffer, "photo.jpg");
+                        
+                        const uploadRes = await axios.post("https://catbox.moe/user/api.php", form, {
+                            headers: form.getHeaders(),
+                            timeout: 10000
+                        });
+                        
+                        const photoUrl = uploadRes.data.trim();
+                        console.log(`[${cmd}] Uploaded: ${photoUrl}`);
 
-                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
-
-                try {
-                    // 1. Download Gambar
-                    let mediaBuffer;
-                    if (isQuotedImage) {
-                        mediaBuffer = await downloadMediaMessage(
-                            { message: msg.message.extendedTextMessage.contextInfo.quotedMessage }, 'buffer', {}
-                        );
-                    } else {
-                        mediaBuffer = await downloadMediaMessage(msg, 'buffer', {});
-                    }
-
-                    // 2. Convert ke Base64 (Wajib buat Replicate)
-                    const base64Image = `data:image/jpeg;base64,${mediaBuffer.toString('base64')}`;
-
-                    // 3. Kirim ke Replicate (Model: Real-ESRGAN)
-                    // Model ini jago banget bikin foto pecah jadi tajem (Upscale 4x)
-                    const output = await replicate.run(
-                        "nightmareai/real-esrgan:42fed1c4974146d4d2414e2be2c5277c7fcf05fccffa9990142941f540251853",
-                        {
-                            input: {
-                                image: base64Image,
-                                scale: 4, // Perbesar 4x lipat
-                                face_enhance: true // Perbaiki wajah juga
+                        // Try multiple enhance APIs
+                        const apis = [
+                            {
+                                name: "DELINE",
+                                url: `https://api.deline.web.id/tools/hd?url=${encodeURIComponent(photoUrl)}`,
+                                type: "direct"
+                            },
+                            {
+                                name: "AEM",
+                                url: "https://aem.resto-alya.my.id/api/ai/remini",
+                                type: "post",
+                                data: { image_url: photoUrl },
+                                getResult: (res) => res.data?.result?.image_url
+                            },
+                            {
+                                name: "NZCD",
+                                url: "https://nzcd-rldt.aemapi.my.id/api/ai/remini",
+                                type: "post", 
+                                data: { image: photoUrl },
+                                getResult: (res) => res.data?.result
+                            },
+                            {
+                                name: "REMIX",
+                                url: "https://remix.aemt.me/remini",
+                                type: "post",
+                                data: { image: photoUrl },
+                                getResult: (res) => res.data?.url || res.data?.result
+                            }
+                        ];
+                        
+                        let enhancedUrl;
+                        let successfulApi;
+                        
+                        for (const api of apis) {
+                            try {
+                                console.log(`[${cmd}] Trying ${api.name}...`);
+                                
+                                if (api.type === "direct") {
+                                    // Direct image URL
+                                    enhancedUrl = api.url;
+                                    successfulApi = api.name;
+                                    break;
+                                    
+                                } else if (api.type === "post") {
+                                    // POST API
+                                    const response = await axios.post(api.url, api.data, {
+                                        timeout: 15000,
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'User-Agent': 'BangBot/1.0'
+                                        }
+                                    });
+                                    
+                                    const resultUrl = api.getResult(response);
+                                    if (resultUrl && resultUrl.startsWith("http")) {
+                                        enhancedUrl = resultUrl;
+                                        successfulApi = api.name;
+                                        break;
+                                    }
+                                }
+                            } catch (apiError) {
+                                console.log(`[${cmd}] ${api.name} failed:`, apiError.message);
+                                continue;
                             }
                         }
-                    );
-
-                    // Output Replicate biasanya langsung URL gambar hasil
-                    if (output) {
+                        
+                        if (!enhancedUrl) {
+                            throw new Error("Semua API enhance sedang tidak tersedia");
+                        }
+                        
+                        // Send final result
+                        await sock.sendMessage(from, { delete: statusMsg.key });
+                        
                         await sock.sendMessage(from, { 
-                            image: { url: output }, 
-                            caption: "*SUKSES JADI HD!*"
-                        }, { quoted: msg });
-
-                        await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
-                    } else {
-                        throw new Error("Hasil AI kosong.");
+                            react: { text: "✅", key: msg.key } 
+                        });
+                        
+                    } catch (error) {
+                        throw error;
                     }
-
-                } catch (e) {
-                    console.error("HD Error:", e);
-                    await sock.sendMessage(from, { text: "❌ Gagal memproses gambar. Pastikan server Replicate aman." }, { quoted: msg });
                 }
+                
+                // Execute dengan error handling
+                enhancePhoto().catch(async (error) => {
+                    console.error(`[${cmd}] Error:`, error);
+                    
+                    await sock.sendMessage(from, { 
+                        react: { text: "❌", key: msg.key } 
+                    });
+                    
+                    await sock.sendMessage(from, {
+                        text: `❌ *Enhance Gagal*\n\n` +
+                            `*Error:* ${error.message}\n\n` +
+                            `Coba:\n` +
+                            `1. Foto yang lebih jelas\n` +
+                            `2. Ukuran < 5MB\n` +
+                            `3. Beberapa menit lagi\n` +
+                            `4. Command: .help`
+                    }, { quoted: msg });
+                });
             }
 
             // =================================================
