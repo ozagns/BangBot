@@ -10692,16 +10692,16 @@ ${para}`
             }
 
 // =================================================
-            // FITUR SMEME (LOGIKA SCRIPT ABANG)
+            // FITUR SMEME (FIXED: NO DUPLICATE SEND)
             // =================================================
             if (cmd === "!smeme" || cmd === "!meme") {
                 // 1. Cek Input & Gambar
-                const args = teks.replace(/!smeme|smeme|!meme|stickermeme|!stickmeme|stickmeme/gi, "").trim();
+                const args = teks.replace(/!smeme|smeme|!meme|meme|!stickmeme|stickmeme/gi, "").trim();
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
                 const isImage = msg.message.imageMessage;
 
                 if (!args || (!isQuotedImage && !isImage)) {
-                    return sock.sendMessage(from, { text: `⚠️ Format salah!\nKirim/Reply gambar dengan caption:\n*${cmd} Teks Atas|Teks Bawah*` }, { quoted: msg });
+                    return sock.sendMessage(from, { text: `⚠️ Format salah!\nKirim/Reply gambar dengan caption:\n*!smeme Teks Atas|Teks Bawah*` }, { quoted: msg });
                 }
 
                 await sock.sendMessage(from, { react: { text: "🚀", key: msg.key } });
@@ -10713,15 +10713,14 @@ ${para}`
                     const axios = require("axios");
                     const { Sticker } = require("wa-sticker-formatter");
 
-                    // 2. Download Media jadi Buffer (Pengganti sock.downloadAndSave...)
+                    // 2. Download Media jadi Buffer
                     let mediaStream = await downloadContentFromMessage(isQuotedImage || isImage, 'image');
                     let buffer = Buffer.from([]);
                     for await (const chunk of mediaStream) {
                         buffer = Buffer.concat([buffer, chunk]);
                     }
 
-                    // 3. Upload File (Pengganti UploadFileUgu)
-                    // Kita pake Catbox karena Ugu sering mati/hapus file
+                    // 3. Upload File ke Catbox
                     const bodyForm = new FormData();
                     bodyForm.append("reqtype", "fileupload");
                     bodyForm.append("fileToUpload", buffer, "image.jpg");
@@ -10729,29 +10728,28 @@ ${para}`
                     const uploadRes = await axios.post("https://catbox.moe/user/api.php", bodyForm, {
                         headers: { ...bodyForm.getHeaders() }
                     });
-                    const urlGambar = uploadRes.data.trim(); // Ini URL Background
+                    const urlGambar = uploadRes.data.trim(); 
 
-                    // 4. Bikin URL Meme (Sesuai script Abang)
+                    // 4. Bikin URL Meme
                     let [atas, bawah] = args.split("|");
-                    if (!bawah) { bawah = atas; atas = " "; } // Logic: kalau cuma 1 teks, jadi teks bawah
+                    if (!bawah) { bawah = atas; atas = " "; } 
 
-                    // Encode teks biar support spasi/emoji
                     const safeAtas = encodeURIComponent(atas.trim()).replace(/%20/g, "_");
                     const safeBawah = encodeURIComponent(bawah.trim()).replace(/%20/g, "_");
 
                     const memeUrl = `https://api.memegen.link/images/custom/${safeAtas}/${safeBawah}.png?background=${urlGambar}`;
                     console.log(`[Smeme] Link: ${memeUrl}`);
 
-        // 5. Download Hasil Meme (MODIFIKASI ANTI-ERROR 415)
+                    // 5. Download Hasil Meme (Bypass Error 415)
                     const getMeme = await axios.get(memeUrl, { 
                         responseType: 'arraybuffer',
                         headers: { 
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36' 
                         },
-                        validateStatus: () => true // <--- INI KUNCINYA (Terima semua status)
+                        validateStatus: () => true 
                     });
 
-                    // Cek apakah datanya benar-benar gambar (Buffer)
+                    // 6. Buat Stiker & Kirim
                     if (getMeme.data && Buffer.isBuffer(getMeme.data)) {
                         
                         const sticker = new Sticker(getMeme.data, {
@@ -10765,12 +10763,10 @@ ${para}`
                         await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
                     } else {
-                        // Kalau datanya rusak/kosong
                         throw new Error(`Gagal download meme. Status: ${getMeme.status}`);
                     }
 
-                    await sock.sendMessage(from, await sticker.toMessage(), { quoted: msg });
-                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+                    // (SISA KODINGAN LAMA DI SINI SUDAH SAYA HAPUS BIAR GAK ERROR)
 
                 } catch (e) {
                     console.error("[Smeme] Error:", e);
