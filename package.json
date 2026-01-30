@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@hapi/boom": "^10.0.1",
+    "@napi-rs/canvas": "^0.1.89",
     "@whiskeysockets/baileys": "^7.0.0-rc.9",
     "axios": "^1.13.2",
     "btch-downloader": "^6.0.25",

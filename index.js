@@ -31,6 +31,8 @@ const fs = require('fs');
 const os = require('os'); // Bisa taruh di atas file juga
 const path = require('path');
 const { youtube } = require('btch-downloader');
+// Load .env sekali saja
+require('dotenv').config();
 
 function listFilesRecursive(dir) {
   let results = [];
@@ -220,9 +222,6 @@ const LAST_PDF = {};
 const REMBG_CLI = "rembg";
 // Simpan gambar terakhir per chat (untuk !qrauto)
 const LAST_QR_IMAGE = {};
-
-// Load .env sekali saja
-require('dotenv').config();
 
 process.on('unhandledRejection', (reason, p) => {
     console.error('UNHANDLED REJECTION:', reason);
@@ -10645,81 +10644,97 @@ ${para}`
             }
 
 // =================================================
-        // FITUR SMEME (VERSION: JIMP LOCAL 0.16)
-        // =================================================
-        if (cmd === "!smeme" || cmd === "!meme") {
-            const args = teks.replace(/!smeme|smeme|!meme|meme|!stickmeme|stickmeme/gi, "").trim();
-            const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
-            const isImage = msg.message.imageMessage;
+            // FITUR SMEME (VERSION: CANVAS FINAL - HQ & FIX FONT)
+            // =================================================
+            if (cmd === "!smeme" || cmd === "!meme" || cmd === "stickmeme" || cmd === "smm") {
+                const args = teks.replace(/!smeme|smeme|!meme|meme|!stickmeme|stickmeme/gi, "").trim();
+                const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
+                const isImage = msg.message.imageMessage;
 
-            if (!args || (!isQuotedImage && !isImage)) {
-                return sock.sendMessage(from, { text: `⚠️ Kirim/Reply gambar dengan caption:\n*!smeme Teks Atas|Teks Bawah*` }, { quoted: msg });
+                if (!args || (!isQuotedImage && !isImage)) {
+                    return sock.sendMessage(from, { text: `⚠️ Kirim/Reply gambar dengan caption:\n*!meme Teks Atas|Teks Bawah*` }, { quoted: msg });
+                }
+
+                await sock.sendMessage(from, { react: { text: "🎨", key: msg.key } });
+
+                try {
+                    const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
+                    const { createCanvas, loadImage, registerFont } = require('@napi-rs/canvas');
+                    const { Sticker } = require("wa-sticker-formatter");
+                    const path = require('path');
+
+                    // 1. Download Gambar
+                    let mediaStream = await downloadContentFromMessage(isQuotedImage || isImage, 'image');
+                    let buffer = Buffer.from([]);
+                    for await (const chunk of mediaStream) {
+                        buffer = Buffer.concat([buffer, chunk]);
+                    }
+
+                    // 2. Registrasi Font
+                    const fontPath = path.join(__dirname, 'impact.ttf');
+                    try { registerFont(fontPath, { family: 'Impact' }); } catch (err) {}
+
+                    // 3. Setup Canvas
+                    const img = await loadImage(buffer);
+                    let width = img.width;
+                    let height = img.height;
+                    const maxSize = 800;
+                    if (width > maxSize) {
+                        const scale = maxSize / width;
+                        width = maxSize;
+                        height = height * scale;
+                    }
+                    const canvas = createCanvas(width, height);
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // 4. Konfigurasi Teks (FIX FONT KEGEDEAN)
+                    let [atas, bawah] = args.split("|");
+                    if (!bawah) { bawah = atas; atas = ""; }
+
+                    const drawMemeText = (text, x, y, isBottom) => {
+                        // Rumus baru: Maksimal 12% lebar gambar, TAPI gak boleh lebih dari 90px
+                        let fontSize = Math.min(width * 0.12, 90); 
+                        if (fontSize < 30) fontSize = 30;
+
+                        do {
+                            ctx.font = `bold ${fontSize}px Impact`;
+                            fontSize -= 2;
+                        } while (ctx.measureText(text).width > width - 40 && fontSize > 10);
+
+                        ctx.fillStyle = 'white';
+                        ctx.strokeStyle = 'black';
+                        ctx.lineWidth = fontSize / 15;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = isBottom ? 'bottom' : 'top';
+                        ctx.lineJoin = 'round';
+
+                        ctx.strokeText(text, x, y);
+                        ctx.fillText(text, x, y);
+                    }
+
+                    if (atas) drawMemeText(atas.toUpperCase(), width / 2, 20, false);
+                    if (bawah) drawMemeText(bawah.toUpperCase(), width / 2, height - 20, true);
+
+                    // 5. Render & Stiker (FIX GAMBAR KARTUN/BURIK)
+                    // Naikkan kualitas JPEG dari canvas (0.9 = 90%)
+                    const hasilBuffer = await canvas.encode('jpeg', { quality: 0.9 });
+                    
+                    const sticker = new Sticker(hasilBuffer, {
+                        pack: "BangBot Meme", 
+                        author: "bangbot", 
+                        type: "full",
+                        quality: 90 // <-- INI KUNCINYA: Naikkan kualitas stiker (sebelumnya 60)
+                    });
+
+                    await sock.sendMessage(from, await sticker.toMessage(), { quoted: msg });
+                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+
+                } catch (e) {
+                    console.error("[Smeme] Error:", e);
+                    sock.sendMessage(from, { text: "❌ Gagal membuat meme." }, { quoted: msg });
+                }
             }
-
-            await sock.sendMessage(from, { react: { text: "🎨", key: msg.key } });
-
-            try {
-                const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
-                const Jimp = require("jimp"); 
-                const { Sticker } = require("wa-sticker-formatter");
-
-                // 1. Download Gambar
-                let mediaStream = await downloadContentFromMessage(isQuotedImage || isImage, 'image');
-                let buffer = Buffer.from([]);
-                for await (const chunk of mediaStream) {
-                    buffer = Buffer.concat([buffer, chunk]);
-                }
-
-                // 2. Edit Gambar (Pake JIMP 0.16)
-                const image = await Jimp.read(buffer);
-
-                // Resize biar enteng
-                if (image.bitmap.width > 800) {
-                    image.resize(800, Jimp.AUTO);
-                }
-
-                const font = await Jimp.loadFont(Jimp.FONT_SANS_64_WHITE);
-                const { width, height } = image.bitmap;
-
-                let [atas, bawah] = args.split("|");
-                if (!bawah) { bawah = atas; atas = ""; }
-
-                // Tulis Teks Atas
-                if (atas) {
-                    image.print(font, 0, 10, {
-                        text: atas.toUpperCase(),
-                        alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER,
-                        alignmentY: Jimp.VERTICAL_ALIGN_TOP
-                    }, width, height);
-                }
-
-                // Tulis Teks Bawah
-                if (bawah) {
-                    const textHeight = Jimp.measureTextHeight(font, bawah.toUpperCase(), width);
-                    image.print(font, 0, height - textHeight - 20, {
-                        text: bawah.toUpperCase(),
-                        alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER,
-                        alignmentY: Jimp.VERTICAL_ALIGN_BOTTOM
-                    }, width, height);
-                }
-
-                // 3. Jadikan Stiker
-                const hasilBuffer = await image.getBufferAsync(Jimp.MIME_JPEG);
-                const sticker = new Sticker(hasilBuffer, {
-                    pack: "BangBot Meme", 
-                    author: "Bangbot", 
-                    type: "full",
-                    quality: 60 
-                });
-
-                await sock.sendMessage(from, await sticker.toMessage(), { quoted: msg });
-                await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
-
-            } catch (e) {
-                console.error("[Smeme] Error:", e);
-                sock.sendMessage(from, { text: "❌ Gagal edit gambar. Coba gambar lain." }, { quoted: msg });
-            }
-        }
  
             // ================================================
             // SPEEDTEST (pakai python -m speedtest --simple)
