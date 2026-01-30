@@ -10692,18 +10692,16 @@ ${para}`
             }
 
 // =================================================
-            // FITUR SMEME (STICKER MEME)
+            // FITUR SMEME (CATBOX VERSION - FIXED)
             // =================================================
             if (cmd === "!smeme" || cmd === "!meme") {
-                const args = teks.replace(/!smeme|smeme|!stickmeme|stickmeme|!smm|smm/gi, "").trim();
+                const args = teks.replace(/!smeme|smeme|!meme|stickmeme|!smm|smm/gi, "").trim();
                 
-                // Cek apakah user ngirim gambar atau reply gambar
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
                 const isImage = msg.message.imageMessage;
-                const quoted = msg.quoted ? msg.quoted : msg;
                 
                 if (!args || (!isQuotedImage && !isImage)) {
-                    return sock.sendMessage(from, { text: `⚠️ Kirim/Reply gambar dengan caption:\n*!smeme Teks Atas|Teks Bawah*\n\nContoh: *!smeme Pinjam Dulu|Seratus*` }, { quoted: msg });
+                    return sock.sendMessage(from, { text: `⚠️ Kirim/Reply gambar dengan caption:\n*!smeme Teks Atas|Teks Bawah*` }, { quoted: msg });
                 }
 
                 await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
@@ -10711,25 +10709,18 @@ ${para}`
                 try {
                     const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
                     const FormData = require("form-data");
-                    const Sticker = require("wa-sticker-formatter"); // Wajib install ini
+                    const axios = require("axios");
+                    // 🔧 PERBAIKAN DI SINI: Pakai kurung kurawal { Sticker }
+                    const { Sticker } = require("wa-sticker-formatter"); 
 
-                    // 1. DOWNLOAD GAMBAR 📥
-                    let mediaStream, mimeType;
-                    if (isQuotedImage) {
-                        mediaStream = await downloadContentFromMessage(isQuotedImage, 'image');
-                        mimeType = 'image/jpeg';
-                    } else {
-                        mediaStream = await downloadContentFromMessage(isImage, 'image');
-                        mimeType = 'image/jpeg';
-                    }
-
+                    // 1. Download Gambar
+                    let mediaStream = await downloadContentFromMessage(isQuotedImage || isImage, 'image');
                     let buffer = Buffer.from([]);
                     for await (const chunk of mediaStream) {
                         buffer = Buffer.concat([buffer, chunk]);
                     }
 
-                    // 2. UPLOAD KE CATBOX (Biar dapet URL Publik) 🌐
-                    // DinzAPI sering down, kita pake Catbox.moe yang lebih kuat
+                    // 2. Upload ke Catbox
                     const bodyForm = new FormData();
                     bodyForm.append("reqtype", "fileupload");
                     bodyForm.append("fileToUpload", buffer, "image.jpg");
@@ -10741,23 +10732,21 @@ ${para}`
                     const imageUrl = uploadRes.data.trim();
                     console.log(`[Smeme] Upload sukses: ${imageUrl}`);
 
-                    // 3. RAKIT URL MEME (API Memegen) 🎨
+                    // 3. Rakit URL Meme
                     let [atas, bawah] = args.split("|");
-                    // Default text kalau kosong
-                    if (!bawah) { bawah = atas; atas = " "; } 
+                    if (!bawah) { bawah = atas; atas = " "; }
                     
-                    // Bersihin teks dari karakter aneh biar URL valid
                     const safeAtas = encodeURIComponent(atas.trim() || "_").replace(/%20/g, "_");
                     const safeBawah = encodeURIComponent(bawah.trim() || "_").replace(/%20/g, "_");
 
                     const memeUrl = `https://api.memegen.link/images/custom/${safeAtas}/${safeBawah}.png?background=${imageUrl}`;
 
-                    // 4. KONVERSI JADI STICKER & KIRIM 📦
+                    // 4. Buat Stiker (Sekarang harusnya aman)
                     const sticker = new Sticker(memeUrl, {
-                        pack: "Meme", // Ganti nama pack sesuka hati
-                        author: "Bangbot", // Ganti nama author
-                        type: "full", // Tipe: full, crop, circle
-                        quality: 70
+                        pack: "BangBot Meme", 
+                        author: "Ozagns", 
+                        type: "full",
+                        quality: 50 
                     });
 
                     await sock.sendMessage(from, await sticker.toMessage(), { quoted: msg });
@@ -10765,7 +10754,7 @@ ${para}`
 
                 } catch (e) {
                     console.error("[Smeme] Error:", e);
-                    sock.sendMessage(from, { text: "❌ Gagal membuat meme. Pastikan gambar tidak terlalu besar." }, { quoted: msg });
+                    sock.sendMessage(from, { text: "❌ Gagal membuat meme." }, { quoted: msg });
                 }
             }
 
