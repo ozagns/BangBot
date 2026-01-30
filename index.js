@@ -10877,7 +10877,7 @@ Selesai Bang.`
             }
 
 // =================================================
-            // FITUR HD / REMINI (FIX: UGUU UPLOADER)
+            // FITUR HD / REMINI (FIX: DELINE + UGUU + FAKE BROWSER)
             // =================================================
             if (cmd === "!hd" || cmd === "!remini" || cmd === "!tohd") {
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
@@ -10887,7 +10887,7 @@ Selesai Bang.`
                     return sock.sendMessage(from, { text: `⚠️ Kirim/Reply foto burik dengan caption *${cmd}*` }, { quoted: msg });
                 }
 
-                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+                await sock.sendMessage(from, { react: { text: "⏳", key: msg.key } });
 
                 try {
                     const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
@@ -10901,26 +10901,38 @@ Selesai Bang.`
                         buffer = Buffer.concat([buffer, chunk]);
                     }
 
-                    // 2. Fungsi Upload ke Uguu.se (GANTI CATBOX)
+                    // 2. Upload ke Uguu (Server Stabil)
                     const uploadToUguu = async (fileBuffer) => {
                         const form = new FormData();
                         form.append("files[]", fileBuffer, "image.jpg");
                         
+                        // Header khusus biar Uguu nerima
                         const { data } = await axios.post("https://uguu.se/upload.php?output=json", form, {
-                            headers: { ...form.getHeaders() }
+                            headers: { 
+                                ...form.getHeaders(),
+                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"
+                            }
                         });
-                        return data.files[0].url; // Ambil URL hasil upload
+                        return data.files[0].url;
                     };
 
-                    // 3. Proses Upload
                     const imgUrl = await uploadToUguu(buffer);
                     console.log("Uploaded to Uguu:", imgUrl);
 
-                    // 4. Panggil API HD
+                    // 3. Panggil API Deline (DENGAN HEADER BROWSER)
                     const apiUrl = `https://api.deline.web.id/tools/hd?url=${imgUrl}`;
-                    const response = await axios.get(apiUrl, { responseType: 'arraybuffer' });
+                    
+                    const response = await axios.get(apiUrl, { 
+                        responseType: 'arraybuffer',
+                        timeout: 60000, // Kita kasih waktu 60 detik (1 menit) biar gak timeout
+                        headers: {
+                            // Ini kuncinya: Pura-pura jadi Browser Chrome biar gak diblokir
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+                        }
+                    });
 
-                    // 5. Kirim Hasil
+                    // 4. Kirim Hasil
                     await sock.sendMessage(from, { 
                         image: response.data, 
                         caption: "" 
@@ -10929,12 +10941,11 @@ Selesai Bang.`
                     await sock.sendMessage(from, { react: { text: "✨", key: msg.key } });
 
                 } catch (e) {
-                    console.error("[HD] Error:", e);
-                    // Cek error spesifik
-                    if (e.code === 'ETIMEDOUT') {
-                        sock.sendMessage(from, { text: "❌ Server upload timeout. Coba lagi nanti." }, { quoted: msg });
+                    console.error("[HD] Error:", e.message);
+                    if (e.code === 'ECONNABORTED') {
+                        sock.sendMessage(from, { text: "❌ Proses terlalu lama (Timeout). Coba lagi nanti." }, { quoted: msg });
                     } else {
-                        sock.sendMessage(from, { text: "❌ Gagal memproses HD." }, { quoted: msg });
+                        sock.sendMessage(from, { text: "❌ Gagal memproses HD. Pastikan server API sedang aktif." }, { quoted: msg });
                     }
                 }
             }
