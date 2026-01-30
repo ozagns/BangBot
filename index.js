@@ -10645,94 +10645,81 @@ ${para}`
             }
 
 // =================================================
-            // FITUR SMEME (VERSION: JIMP LOCAL - ANTI ABU-ABU)
-            // =================================================
-            if (cmd === "!smeme" || cmd === "!meme") {
-                const args = teks.replace(/!smeme|smeme|!meme|meme|!stickmeme|stickmeme/gi, "").trim();
-                const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
-                const isImage = msg.message.imageMessage;
+        // FITUR SMEME (VERSION: JIMP LOCAL 0.16)
+        // =================================================
+        if (cmd === "!smeme" || cmd === "!meme") {
+            const args = teks.replace(/!smeme|smeme|!meme|meme|!stickmeme|stickmeme/gi, "").trim();
+            const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
+            const isImage = msg.message.imageMessage;
 
-                if (!args || (!isQuotedImage && !isImage)) {
-                    return sock.sendMessage(from, { text: `⚠️ Kirim/Reply gambar dengan caption:\n*!meme Teks Atas|Teks Bawah*` }, { quoted: msg });
-                }
-
-                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
-
-                try {
-                    const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
-                    const Jimp = require("jimp"); // Wajib npm install jimp
-                    const { Sticker } = require("wa-sticker-formatter");
-
-                    // 1. Download Gambar jadi Buffer
-                    let mediaStream = await downloadContentFromMessage(isQuotedImage || isImage, 'image');
-                    let buffer = Buffer.from([]);
-                    for await (const chunk of mediaStream) {
-                        buffer = Buffer.concat([buffer, chunk]);
-                    }
-
-                    // 2. Baca Gambar pake JIMP
-                    const image = await Jimp.read(buffer);
-                    
-                    // Resize biar gak keberatan (Max lebar 800px)
-                    if (image.bitmap.width > 800) {
-                        image.resize(800, Jimp.AUTO);
-                    }
-
-                    // 3. Load Font Meme (Bawaan JIMP)
-                    const font = await Jimp.loadFont(Jimp.FONT_SANS_64_WHITE);
-                    const { width, height } = image.bitmap;
-
-                    let [atas, bawah] = args.split("|");
-                    if (!bawah) { bawah = atas; atas = ""; }
-
-                    // Tulis Teks Atas
-                    if (atas) {
-                        image.print(
-                            font, 
-                            0, 10, // Posisi X, Y
-                            {
-                                text: atas.toUpperCase(),
-                                alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER,
-                                alignmentY: Jimp.VERTICAL_ALIGN_TOP
-                            }, 
-                            width, height
-                        );
-                    }
-
-                    // Tulis Teks Bawah
-                    if (bawah) {
-                        const textHeight = Jimp.measureTextHeight(font, bawah.toUpperCase(), width);
-                        image.print(
-                            font, 
-                            0, height - textHeight - 20, // Posisi Y di bawah
-                            {
-                                text: bawah.toUpperCase(),
-                                alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER,
-                                alignmentY: Jimp.VERTICAL_ALIGN_BOTTOM
-                            }, 
-                            width, height
-                        );
-                    }
-
-                    // 4. Jadikan Buffer Lagi
-                    const hasilBuffer = await image.getBufferAsync(Jimp.MIME_JPEG);
-
-                    // 5. Buat Stiker
-                    const sticker = new Sticker(hasilBuffer, {
-                        pack: "BangBot Meme", 
-                        author: "Bangbot", 
-                        type: "full",
-                        quality: 60 
-                    });
-
-                    await sock.sendMessage(from, await sticker.toMessage(), { quoted: msg });
-                    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
-
-                } catch (e) {
-                    console.error("[Smeme] Error:", e);
-                    sock.sendMessage(from, { text: "❌ Gagal mengedit gambar (Coba gambar yang lebih kecil)." }, { quoted: msg });
-                }
+            if (!args || (!isQuotedImage && !isImage)) {
+                return sock.sendMessage(from, { text: `⚠️ Kirim/Reply gambar dengan caption:\n*!smeme Teks Atas|Teks Bawah*` }, { quoted: msg });
             }
+
+            await sock.sendMessage(from, { react: { text: "🎨", key: msg.key } });
+
+            try {
+                const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
+                const Jimp = require("jimp"); 
+                const { Sticker } = require("wa-sticker-formatter");
+
+                // 1. Download Gambar
+                let mediaStream = await downloadContentFromMessage(isQuotedImage || isImage, 'image');
+                let buffer = Buffer.from([]);
+                for await (const chunk of mediaStream) {
+                    buffer = Buffer.concat([buffer, chunk]);
+                }
+
+                // 2. Edit Gambar (Pake JIMP 0.16)
+                const image = await Jimp.read(buffer);
+
+                // Resize biar enteng
+                if (image.bitmap.width > 800) {
+                    image.resize(800, Jimp.AUTO);
+                }
+
+                const font = await Jimp.loadFont(Jimp.FONT_SANS_64_WHITE);
+                const { width, height } = image.bitmap;
+
+                let [atas, bawah] = args.split("|");
+                if (!bawah) { bawah = atas; atas = ""; }
+
+                // Tulis Teks Atas
+                if (atas) {
+                    image.print(font, 0, 10, {
+                        text: atas.toUpperCase(),
+                        alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER,
+                        alignmentY: Jimp.VERTICAL_ALIGN_TOP
+                    }, width, height);
+                }
+
+                // Tulis Teks Bawah
+                if (bawah) {
+                    const textHeight = Jimp.measureTextHeight(font, bawah.toUpperCase(), width);
+                    image.print(font, 0, height - textHeight - 20, {
+                        text: bawah.toUpperCase(),
+                        alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER,
+                        alignmentY: Jimp.VERTICAL_ALIGN_BOTTOM
+                    }, width, height);
+                }
+
+                // 3. Jadikan Stiker
+                const hasilBuffer = await image.getBufferAsync(Jimp.MIME_JPEG);
+                const sticker = new Sticker(hasilBuffer, {
+                    pack: "BangBot Meme", 
+                    author: "Bangbot", 
+                    type: "full",
+                    quality: 60 
+                });
+
+                await sock.sendMessage(from, await sticker.toMessage(), { quoted: msg });
+                await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
+
+            } catch (e) {
+                console.error("[Smeme] Error:", e);
+                sock.sendMessage(from, { text: "❌ Gagal edit gambar. Coba gambar lain." }, { quoted: msg });
+            }
+        }
  
             // =================================================
             // SPEEDTEST (pakai python -m speedtest --simple)
