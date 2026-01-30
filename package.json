@@ -3,7 +3,7 @@
     "@hapi/boom": "^10.0.1",
     "@napi-rs/canvas": "^0.1.89",
     "@whiskeysockets/baileys": "^7.0.0-rc.9",
-    "axios": "^1.13.2",
+    "axios": "^1.13.4",
     "btch-downloader": "^6.0.25",
     "cheerio": "^1.2.0",
     "dotenv": "^17.2.3",

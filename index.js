@@ -10876,146 +10876,65 @@ Selesai Bang.`
                 }
             }
 
+// =================================================
+            // FITUR HD / REMINI (ENHANCE IMAGE)
             // =================================================
-            // FITUR HD/ENHANCE WITH MULTIPLE API FALLBACK
-            // =================================================
-            if (["!hd", "!remini", "!enhance", "!tohd"].includes(cmd)) {
-                // Handler function
-                async function enhancePhoto() {
-                    try {
-                        // Validation
-                        if (!quoted) throw new Error("Reply foto dulu ya!");
-                        
-                        const mime = quoted.mimetype || "";
-                        if (!mime.includes("image")) throw new Error("Itu bukan foto!");
-                        
-                        // Send initial status
-                        await sock.sendMessage(from, { react: { text: "🔍", key: msg.key } });
-                        
-                        // Download photo
-                        const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
-                        const stream = await downloadContentFromMessage(quoted, 'image');
-                        
-                        let buffer = Buffer.from([]);
-                        for await (const chunk of stream) {
-                            buffer = Buffer.concat([buffer, chunk]);
-                        }
-                        
-                        // Upload to host
-                        const FormData = require("form-data");
-                        const axios = require("axios");
-                        
-                        const form = new FormData();
-                        form.append("fileToUpload", buffer, "photo.jpg");
-                        
-                        const uploadRes = await axios.post("https://catbox.moe/user/api.php", form, {
-                            headers: form.getHeaders(),
-                            timeout: 10000
-                        });
-                        
-                        const photoUrl = uploadRes.data.trim();
-                        console.log(`[${cmd}] Uploaded: ${photoUrl}`);
+            if (cmd === "!hd" || cmd === "!remini" || cmd === "!tohd") {
+                const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
+                const isImage = msg.message.imageMessage;
 
-                        // Try multiple enhance APIs
-                        const apis = [
-                            {
-                                name: "DELINE",
-                                url: `https://api.deline.web.id/tools/hd?url=${encodeURIComponent(photoUrl)}`,
-                                type: "direct"
-                            },
-                            {
-                                name: "AEM",
-                                url: "https://aem.resto-alya.my.id/api/ai/remini",
-                                type: "post",
-                                data: { image_url: photoUrl },
-                                getResult: (res) => res.data?.result?.image_url
-                            },
-                            {
-                                name: "NZCD",
-                                url: "https://nzcd-rldt.aemapi.my.id/api/ai/remini",
-                                type: "post", 
-                                data: { image: photoUrl },
-                                getResult: (res) => res.data?.result
-                            },
-                            {
-                                name: "REMIX",
-                                url: "https://remix.aemt.me/remini",
-                                type: "post",
-                                data: { image: photoUrl },
-                                getResult: (res) => res.data?.url || res.data?.result
-                            }
-                        ];
-                        
-                        let enhancedUrl;
-                        let successfulApi;
-                        
-                        for (const api of apis) {
-                            try {
-                                console.log(`[${cmd}] Trying ${api.name}...`);
-                                
-                                if (api.type === "direct") {
-                                    // Direct image URL
-                                    enhancedUrl = api.url;
-                                    successfulApi = api.name;
-                                    break;
-                                    
-                                } else if (api.type === "post") {
-                                    // POST API
-                                    const response = await axios.post(api.url, api.data, {
-                                        timeout: 15000,
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                            'User-Agent': 'BangBot/1.0'
-                                        }
-                                    });
-                                    
-                                    const resultUrl = api.getResult(response);
-                                    if (resultUrl && resultUrl.startsWith("http")) {
-                                        enhancedUrl = resultUrl;
-                                        successfulApi = api.name;
-                                        break;
-                                    }
-                                }
-                            } catch (apiError) {
-                                console.log(`[${cmd}] ${api.name} failed:`, apiError.message);
-                                continue;
-                            }
-                        }
-                        
-                        if (!enhancedUrl) {
-                            throw new Error("Semua API enhance sedang tidak tersedia");
-                        }
-                        
-                        // Send final result
-                        await sock.sendMessage(from, { delete: statusMsg.key });
-                        
-                        await sock.sendMessage(from, { 
-                            react: { text: "✅", key: msg.key } 
-                        });
-                        
-                    } catch (error) {
-                        throw error;
-                    }
+                if (!isQuotedImage && !isImage) {
+                    return sock.sendMessage(from, { text: `⚠️ Kirim/Reply foto burik dengan caption *${cmd}*` }, { quoted: msg });
                 }
-                
-                // Execute dengan error handling
-                enhancePhoto().catch(async (error) => {
-                    console.error(`[${cmd}] Error:`, error);
+
+                await sock.sendMessage(from, { react: { text: "🕑", key: msg.key } });
+
+                try {
+                    const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
+                    const axios = require("axios");
+                    const FormData = require("form-data");
+
+                    // 1. Download Gambar dari WA
+                    let mediaStream = await downloadContentFromMessage(isQuotedImage || isImage, 'image');
+                    let buffer = Buffer.from([]);
+                    for await (const chunk of mediaStream) {
+                        buffer = Buffer.concat([buffer, chunk]);
+                    }
+
+                    // 2. Fungsi Upload ke Catbox (Biar dapet URL)
+                    const uploadToCatbox = async (fileBuffer) => {
+                        const form = new FormData();
+                        form.append("reqtype", "fileupload");
+                        form.append("fileToUpload", fileBuffer, "image.jpg");
+                        
+                        const { data } = await axios.post("https://catbox.moe/user/api.php", form, {
+                            headers: { ...form.getHeaders() }
+                        });
+                        return data; // Ini isinya URL gambar (contoh: https://files.catbox.moe/xyz.jpg)
+                    };
+
+                    // 3. Proses Upload
+                    const imgUrl = await uploadToCatbox(buffer);
+                    console.log("Uploaded to Catbox:", imgUrl);
+
+                    // 4. Panggil API HD (Deline)
+                    const apiUrl = `https://api.deline.web.id/tools/hd?url=${imgUrl}`;
                     
+                    // Kita ambil gambarnya langsung sebagai buffer
+                    const response = await axios.get(apiUrl, { responseType: 'arraybuffer' });
+
+                    // 5. Kirim Hasilnya
                     await sock.sendMessage(from, { 
-                        react: { text: "❌", key: msg.key } 
-                    });
-                    
-                    await sock.sendMessage(from, {
-                        text: `❌ *Enhance Gagal*\n\n` +
-                            `*Error:* ${error.message}\n\n` +
-                            `Coba:\n` +
-                            `1. Foto yang lebih jelas\n` +
-                            `2. Ukuran < 5MB\n` +
-                            `3. Beberapa menit lagi\n` +
-                            `4. Command: .help`
+                        image: response.data, 
+                        caption: "" 
                     }, { quoted: msg });
-                });
+
+                    await sock.sendMessage(from, { react: { text: "✨", key: msg.key } });
+
+                } catch (e) {
+                    console.error("[HD] Error:", e);
+                    sock.sendMessage(from, { text: "❌ Gagal memproses HD. API mungkin sedang down." }, { quoted: msg });
+                }
             }
 
             // =================================================
