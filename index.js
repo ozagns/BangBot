@@ -10692,36 +10692,36 @@ ${para}`
             }
 
 // =================================================
-            // FITUR SMEME (FIXED BUFFER & BRACKETS)
+            // FITUR SMEME (LOGIKA SCRIPT ABANG)
             // =================================================
             if (cmd === "!smeme" || cmd === "!meme") {
-                const args = teks.replace(/!smeme|smeme|!stickmeme|stickmeme|!smm|smm/gi, "").trim();
-                
+                // 1. Cek Input & Gambar
+                const args = teks.replace(/!smeme|smeme|!meme|stickermeme|!stickmeme|stickmeme/gi, "").trim();
                 const isQuotedImage = msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
                 const isImage = msg.message.imageMessage;
-                
-                // Cek input
+
                 if (!args || (!isQuotedImage && !isImage)) {
-                    return sock.sendMessage(from, { text: `⚠️ Kirim/Reply gambar dengan caption:\n*!smeme Teks Atas|Teks Bawah*` }, { quoted: msg });
+                    return sock.sendMessage(from, { text: `⚠️ Format salah!\nKirim/Reply gambar dengan caption:\n*${cmd} Teks Atas|Teks Bawah*` }, { quoted: msg });
                 }
 
-                await sock.sendMessage(from, { react: { text: "⏳", key: msg.key } });
+                await sock.sendMessage(from, { react: { text: "🚀", key: msg.key } });
 
                 try {
-                    // Import manual di dalam biar aman
+                    // Import Library
                     const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
                     const FormData = require("form-data");
                     const axios = require("axios");
-                    const { Sticker } = require("wa-sticker-formatter"); 
+                    const { Sticker } = require("wa-sticker-formatter");
 
-                    // 1. Download Gambar jadi Buffer
+                    // 2. Download Media jadi Buffer (Pengganti sock.downloadAndSave...)
                     let mediaStream = await downloadContentFromMessage(isQuotedImage || isImage, 'image');
                     let buffer = Buffer.from([]);
                     for await (const chunk of mediaStream) {
                         buffer = Buffer.concat([buffer, chunk]);
                     }
 
-                    // 2. Upload ke Catbox
+                    // 3. Upload File (Pengganti UploadFileUgu)
+                    // Kita pake Catbox karena Ugu sering mati/hapus file
                     const bodyForm = new FormData();
                     bodyForm.append("reqtype", "fileupload");
                     bodyForm.append("fileToUpload", buffer, "image.jpg");
@@ -10729,30 +10729,30 @@ ${para}`
                     const uploadRes = await axios.post("https://catbox.moe/user/api.php", bodyForm, {
                         headers: { ...bodyForm.getHeaders() }
                     });
+                    const urlGambar = uploadRes.data.trim(); // Ini URL Background
 
-                    const imageUrl = uploadRes.data.trim();
-                    console.log(`[Smeme] Upload sukses: ${imageUrl}`);
-
-                    // 3. Rakit URL Meme
+                    // 4. Bikin URL Meme (Sesuai script Abang)
                     let [atas, bawah] = args.split("|");
-                    if (!bawah) { bawah = atas; atas = " "; }
-                    
-                    const safeAtas = encodeURIComponent(atas.trim() || "_").replace(/%20/g, "_");
-                    const safeBawah = encodeURIComponent(bawah.trim() || "_").replace(/%20/g, "_");
+                    if (!bawah) { bawah = atas; atas = " "; } // Logic: kalau cuma 1 teks, jadi teks bawah
 
-                    const memeUrl = `https://api.memegen.link/images/custom/${safeAtas}/${safeBawah}.png?background=${imageUrl}`;
+                    // Encode teks biar support spasi/emoji
+                    const safeAtas = encodeURIComponent(atas.trim()).replace(/%20/g, "_");
+                    const safeBawah = encodeURIComponent(bawah.trim()).replace(/%20/g, "_");
 
-                    // 4. DOWNLOAD MANUAL (Bypass Error 415)
+                    const memeUrl = `https://api.memegen.link/images/custom/${safeAtas}/${safeBawah}.png?background=${urlGambar}`;
+                    console.log(`[Smeme] Link: ${memeUrl}`);
+
+                    // 5. Download Hasil Meme & Jadiin Stiker
+                    // Kita download dulu buffernya biar gak error 415 kayak tadi
                     const getMeme = await axios.get(memeUrl, { 
                         responseType: 'arraybuffer',
-                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36' }
+                        headers: { 'User-Agent': 'Mozilla/5.0' }
                     });
 
-                    // 5. Buat Stiker dari Buffer
                     const sticker = new Sticker(getMeme.data, {
-                        pack: "BangBot Meme", 
-                        author: "Ozagns", 
-                        type: "full",
+                        pack: "BangBot Sticker", 
+                        author: "Meme", 
+                        type: "full", // Bisa ganti 'crop' atau 'circle'
                         quality: 50 
                     });
 
@@ -10763,7 +10763,7 @@ ${para}`
                     console.error("[Smeme] Error:", e);
                     sock.sendMessage(from, { text: "❌ Gagal membuat meme." }, { quoted: msg });
                 }
-            } // <--- Pastikan cuma ada SATU kurung ini di akhir blok smeme
+            }
  
             // =================================================
             // SPEEDTEST (pakai python -m speedtest --simple)
